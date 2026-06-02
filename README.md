@@ -24,7 +24,7 @@
 1. GeoClue2（D-Bus）
 2. ipinfo.io（HTTP、インターネット接続時）
 3. `~/.cache/zenith-wallpaper/location.json`（前回キャッシュ）
-4. フォールバック：東京 (35.69°N, 139.69°E)
+4. フォールバック：グリニッジ (51.48°N, 0.00°E)
 
 ## 要件
 

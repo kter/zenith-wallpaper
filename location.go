@@ -20,7 +20,10 @@ type Location struct {
 	TZ  string  `json:"tz"`
 }
 
-var defaultLocation = Location{Lat: 35.6895, Lon: 139.6917, TZ: "Asia/Tokyo"}
+// defaultLocation is used only when all location sources fail.
+// Greenwich is chosen as a neutral fallback; in practice geoclue or
+// ipinfo.io will supply the actual coordinates before this is reached.
+var defaultLocation = Location{Lat: 51.4779, Lon: -0.0015, TZ: "UTC"}
 
 func cacheFile() string {
 	base, _ := os.UserCacheDir()
