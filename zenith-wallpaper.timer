@@ -1,0 +1,10 @@
+[Unit]
+Description=Update zenith star-sky wallpaper every hour
+
+[Timer]
+OnCalendar=hourly
+OnStartupSec=5
+Persistent=true
+
+[Install]
+WantedBy=timers.target

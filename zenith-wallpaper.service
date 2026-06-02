@@ -1,0 +1,8 @@
+[Unit]
+Description=Generate and apply zenith star-sky wallpaper
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/zenith-wallpaper
