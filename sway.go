@@ -68,16 +68,12 @@ func GetOutputs() ([]SwayOutput, error) {
 			Active:    r.Active,
 			Transform: r.Transform,
 		}
-		// Use rect (logical size) which already accounts for scale/transform.
-		// If rect is zero, fall back to current_mode.
-		if r.Rect.Width > 0 {
-			o.Width = r.Rect.Width
-			o.Height = r.Rect.Height
-		} else {
-			o.Width = r.CurrentMode.Width
-			o.Height = r.CurrentMode.Height
-		}
-		// For 90/270-degree rotated outputs, swap logical dimensions.
+		// Use physical resolution (current_mode) so the image matches
+		// what swaybg displays at 1:1 pixels on HiDPI screens.
+		// rect gives logical pixels which are smaller on scaled displays.
+		o.Width = r.CurrentMode.Width
+		o.Height = r.CurrentMode.Height
+		// For 90/270-degree rotated outputs, swap physical dimensions.
 		switch r.Transform {
 		case "90", "270", "flipped-90", "flipped-270":
 			o.Width, o.Height = o.Height, o.Width
@@ -92,6 +88,6 @@ func GetOutputs() ([]SwayOutput, error) {
 // SetWallpaper applies an image file as the background for the named output.
 func SetWallpaper(outputName, imagePath string) error {
 	findSwaySock()
-	cmd := exec.Command("swaymsg", "output", outputName, "bg", imagePath, "center")
+	cmd := exec.Command("swaymsg", "output", outputName, "bg", imagePath, "fill")
 	return cmd.Run()
 }
