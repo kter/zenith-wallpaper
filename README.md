@@ -35,7 +35,7 @@
 ## インストール
 
 ```sh
-git clone https://github.com/ttakahashi/zenith-wallpaper
+git clone https://github.com/kter/zenith-wallpaper
 cd zenith-wallpaper
 make install        # ~/.local/bin/zenith-wallpaper にコピー（sudo 不要）
 make install-units  # systemd user timer を有効化

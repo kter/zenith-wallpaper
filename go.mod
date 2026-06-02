@@ -1,4 +1,4 @@
-module github.com/ttakahashi/zenith-wallpaper
+module github.com/kter/zenith-wallpaper
 
 go 1.25.0
 
