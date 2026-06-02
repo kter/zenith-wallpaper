@@ -1,40 +1,99 @@
 # zenith-wallpaper
 
-Real-time star-sky desktop wallpaper for sway (Wayland).
+現在地・現在時刻から計算した**実際の夜空**を sway のデスクトップ壁紙として表示するツール。
+「ラップトップの場所から真上を見上げた全天ドーム」を Lambert 等積方位投影で描画し、1時間ごとに自動更新する。
 
-Renders what the sky above your location actually looks like at the current moment:
-- Milky Way panorama warped to the zenith-centered dome (Lambert azimuthal equal-area)
-- Stars from the Yale Bright Star Catalogue (mag ≤ 6.5)
-- Planets and Moon at their current positions
-- Horizon ring with cardinal directions (N/E/S/W)
+![スクリーンショット例](https://www.eso.org/public/images/eso0932a/) <!-- placeholder, replace with actual screenshot -->
 
-Updated hourly via systemd user timer.
+## 何が表示されるか
 
-## Build & install
+| 要素 | 内容 |
+|------|------|
+| **天の川** | ESO 実測全天パノラマ（galactic equirectangular）を天頂ドームへ逆ワープ。濃淡・暗黒帯・銀河中心まで写真的に再現 |
+| **恒星** | Yale Bright Star Catalogue（約 8400 星、等級 ≤ 6.5）。等級に応じて点径・輝度を変調 |
+| **惑星・月** | 軌道要素計算によるリアルタイム位置。地平線上の天体のみ表示 |
+| **地平線・方位** | ドーム外周に地平線リング、N/E/S/W 方位ラベル |
+
+### 投影方式
+
+**Lambert 等積方位投影（天頂中心）**。北が上、東が左（真上を見上げた視点のため地図の鏡像）。
+ドーム直径 = 画面の長辺。各ディスプレイの物理解像度ぴったりの画像を生成するため swaybg はスケール・歪みゼロで表示する。
+
+### 位置情報の取得順
+
+1. GeoClue2（D-Bus）
+2. ipinfo.io（HTTP、インターネット接続時）
+3. `~/.cache/zenith-wallpaper/location.json`（前回キャッシュ）
+4. フォールバック：東京 (35.69°N, 139.69°E)
+
+## 要件
+
+- [sway](https://swaywm.org/) (Wayland compositor)
+- Go 1.21 以上（[mise](https://mise.jdx.dev/) 経由でも可）
+- `swaymsg`（sway に同梱）
+
+## インストール
 
 ```sh
-make              # build binary
-make install      # copy to /usr/local/bin (requires sudo)
-make install-units  # install & enable systemd user timer
+git clone https://github.com/ttakahashi/zenith-wallpaper
+cd zenith-wallpaper
+make install        # ~/.local/bin/zenith-wallpaper にコピー（sudo 不要）
+make install-units  # systemd user timer を有効化
 ```
 
-## Manual run
+### sway config への追記（初回のみ）
+
+`~/.config/sway/config` に以下を追加すると sway 起動時に自動実行される：
+
+```
+output * bg #000000 solid_color
+exec ~/.local/bin/zenith-wallpaper
+```
+
+## 使い方
 
 ```sh
+# 即時実行（壁紙を今すぐ更新）
 zenith-wallpaper
-```
 
-## Uninstall
+# ビルドのみ
+make
 
-```sh
+# インストール（~/.local/bin）
+make install
+
+# systemd user timer の有効化
+make install-units
+
+# アンインストール
 make uninstall
 ```
 
-## Data credits
+timer が有効化されると毎時 0 分に自動実行される（`OnCalendar=hourly`）。
 
-- **Milky Way panorama**: ESO/S. Brunier — [eso0932a](https://www.eso.org/public/images/eso0932a/)  
+```sh
+# 次回実行時刻の確認
+systemctl --user list-timers | grep zenith
+
+# 直近のログ確認
+journalctl --user -u zenith-wallpaper.service -n 20
+```
+
+## キャッシュ
+
+| パス | 内容 |
+|------|------|
+| `~/.cache/zenith-wallpaper/<出力名>.png` | 各ディスプレイの壁紙 PNG |
+| `~/.cache/zenith-wallpaper/location.json` | 前回取得した位置情報（オフライン時のフォールバック） |
+
+画像・パノラマ・星表はバイナリに同梱しているため、初回ダウンロードは不要。
+
+## ライセンス・データクレジット
+
+- **Milky Way panorama**: ESO/S. Brunier — [eso0932a](https://www.eso.org/public/images/eso0932a/)
   © ESO, licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)
 
-- **Yale Bright Star Catalogue (BSC5)**: Hoffleit & Warren (1991).  
-  Retrieved from [CDS Strasbourg](https://cdsarc.cds.unistra.fr/ftp/V/50/).  
-  Public domain.
+- **Yale Bright Star Catalogue (BSC5)**: Hoffleit & Warren (1991).
+  Retrieved from [CDS Strasbourg](https://cdsarc.cds.unistra.fr/ftp/V/50/). Public domain.
+
+- **天文計算**: [soniakeys/meeus](https://github.com/soniakeys/meeus) (MIT)
