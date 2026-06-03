@@ -9,7 +9,7 @@
 
 | 要素 | 内容 |
 |------|------|
-| **天の川** | ESO 実測全天パノラマ（galactic equirectangular）を天頂ドームへ逆ワープ。濃淡・暗黒帯・銀河中心まで写真的に再現 |
+| **天の川** | NASA Deep Star Maps 2020 銀河座標パノラマ（16384×8192）を天頂ドームへ逆ワープ。濃淡・暗黒帯・銀河中心まで写真的に再現 |
 | **恒星** | Yale Bright Star Catalogue（約 8400 星、等級 ≤ 6.5）。等級に応じて点径・輝度を変調 |
 | **惑星・月** | 軌道要素計算によるリアルタイム位置。地平線上の天体のみ表示 |
 | **地平線・方位** | ドーム外周に地平線リング、N/E/S/W 方位ラベル |
@@ -90,8 +90,9 @@ journalctl --user -u zenith-wallpaper.service -n 20
 
 ## ライセンス・データクレジット
 
-- **Milky Way panorama**: ESO/S. Brunier — [eso0932a](https://www.eso.org/public/images/eso0932a/)
-  © ESO, licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)
+- **Milky Way panorama**: NASA/Goddard Space Flight Center Scientific Visualization Studio —
+  [Deep Star Maps 2020](https://svs.gsfc.nasa.gov/4851) (`milkyway_2020_16k_gal`, 16384×8192, galactic coordinates).
+  Public domain.
 
 - **Yale Bright Star Catalogue (BSC5)**: Hoffleit & Warren (1991).
   Retrieved from [CDS Strasbourg](https://cdsarc.cds.unistra.fr/ftp/V/50/). Public domain.
