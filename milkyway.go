@@ -13,12 +13,10 @@ import (
 var milkywayJPG []byte
 
 // MilkyWay holds the decoded galactic equirectangular panorama.
-// The ESO eso0932a image is in galactic coordinates:
-//   - x=0 → l=180°, x=W → l=0° (galactic center at center)
-//   - y=0 → b=+90°, y=H → b=-90°
-//
-// Equivalently: l increases left-to-right from -180 to +180 starting at x=0,
-// but the image has galactic center (l=0) at the horizontal center.
+// NASA Deep Star Maps 2020 galactic coordinate convention:
+//   - l=0° (galactic center) at x=W/2 (horizontal center)
+//   - l increases to the LEFT (x decreasing) — standard astronomical map convention
+//   - y=0 → b=+90° (north galactic pole at top), y=H → b=-90°
 type MilkyWay struct {
 	img    image.Image
 	width  int
@@ -37,8 +35,8 @@ func LoadMilkyWay() (*MilkyWay, error) {
 
 // Sample returns the panorama color at galactic longitude l, latitude b (degrees).
 // l ∈ [-180, 180), b ∈ [-90, 90].
-// The ESO image has l=0 (galactic center) at the horizontal center (x = W/2).
-// l increases to the right for positive l (galactic east).
+// The NASA Deep Star Maps galactic image has l=0 (galactic center) at the horizontal
+// center (x = W/2), with l increasing to the LEFT (standard astronomical map convention).
 // b=+90 at top, b=-90 at bottom.
 func (mw *MilkyWay) Sample(l, b float64) color.RGBA {
 	// Normalise l to [-180, 180)
@@ -49,9 +47,8 @@ func (mw *MilkyWay) Sample(l, b float64) color.RGBA {
 		l += 360
 	}
 
-	// x: l=0 → x=W/2; l=180 → x=W or 0 (wrap); l=-180 → x=0
-	// The image maps left→right as l goes from -180 to +180.
-	fx := (l + 180.0) / 360.0 * float64(mw.width)
+	// x: l=0 → x=W/2; l increases to the LEFT, so fx = (180-l)/360 * W.
+	fx := (180.0 - l) / 360.0 * float64(mw.width)
 	// y: b=+90 → y=0 (top); b=-90 → y=H (bottom)
 	fy := (90.0 - b) / 180.0 * float64(mw.height)
 
