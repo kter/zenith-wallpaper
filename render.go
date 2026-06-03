@@ -24,19 +24,15 @@ func renderSky(
 
 	imgdraw.Draw(img, img.Bounds(), image.NewUniform(color.Black), image.Point{}, imgdraw.Src)
 
-	// Dome: diameter = longer side
-	longer := rw
-	if rh > rw {
-		longer = rh
-	}
-	radius := float64(longer) / 2.0
+	// Dome: radius = half-diagonal so the projection disk circumscribes the
+	// rectangle and every pixel (including corners) is covered by sky.
 	cx := float64(rw) / 2.0
 	cy := float64(rh) / 2.0
+	radius := math.Hypot(cx, cy)
 
 	renderMilkyWay(img, ot, mw, cx, cy, radius)
 	renderStars(img, ot, stars, cx, cy, radius)
 	renderPlanets(img, planets, cx, cy, radius)
-	renderHorizon(img, cx, cy, radius)
 
 	out := image.NewRGBA(image.Rect(0, 0, outW, outH))
 	xdraw.CatmullRom.Scale(out, out.Bounds(), img, img.Bounds(), xdraw.Over, nil)
@@ -128,33 +124,6 @@ func renderPlanets(img *image.RGBA, planets []Planet, cx, cy, radius float64) {
 	}
 }
 
-func renderHorizon(img *image.RGBA, cx, cy, radius float64) {
-	ringColor := color.RGBA{R: 60, G: 120, B: 180, A: 160}
-	for angle := 0.0; angle < 360.0; angle += 0.05 {
-		a := angle * math.Pi / 180.0
-		for dr := -2.0; dr <= 2.0; dr += 0.5 {
-			r := radius + dr
-			px := int(cx + r*math.Sin(a))
-			py := int(cy - r*math.Cos(a))
-			setPixelBlend(img, px, py, ringColor)
-		}
-	}
-
-	labelColor := color.RGBA{R: 140, G: 200, B: 255, A: 220}
-	cardinals := []struct {
-		label string
-		az    float64
-	}{
-		{"N", 0}, {"E", 90}, {"S", 180}, {"W", 270},
-	}
-	for _, c := range cardinals {
-		azRad := c.az * math.Pi / 180.0
-		r := radius + 24
-		px := int(cx - r*math.Sin(azRad))
-		py := int(cy - r*math.Cos(azRad))
-		drawLabel(img, px-4, py-6, c.label, labelColor)
-	}
-}
 
 func fillCircle(img *image.RGBA, cx, cy, r int, c color.RGBA) {
 	for dy := -r; dy <= r; dy++ {
