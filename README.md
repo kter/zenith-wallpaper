@@ -34,6 +34,19 @@
 
 ## インストール
 
+### dnf（Fedora）
+
+```sh
+# リポジトリを有効化（初回のみ）
+sudo dnf install https://repo.devtools.site/rpm/noarch/kter-release-1-1.fc42.noarch.rpm
+
+sudo dnf install zenith-wallpaper
+```
+
+インストール後、timer の有効化と sway config の追記が必要（下記参照）。
+
+### ソースから（mise / Go）
+
 ```sh
 git clone https://github.com/kter/zenith-wallpaper
 cd zenith-wallpaper
@@ -47,8 +60,17 @@ make install-units  # systemd user timer を有効化
 
 ```
 output * bg #000000 solid_color
-exec ~/.local/bin/zenith-wallpaper
+exec /usr/bin/zenith-wallpaper          # dnf インストール時
+# exec ~/.local/bin/zenith-wallpaper   # ソースインストール時
 ```
+
+### timer の有効化（dnf インストール時）
+
+```sh
+systemctl --user enable --now zenith-wallpaper.timer
+```
+
+`make install-units`（ソースインストール）は自動で行うため不要。
 
 ## 使い方
 
