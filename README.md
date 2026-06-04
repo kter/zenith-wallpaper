@@ -54,6 +54,18 @@ make install        # ~/.local/bin/zenith-wallpaper にコピー（sudo 不要�
 make install-units  # systemd user timer を有効化
 ```
 
+## 開発・リリース
+
+main への変更だけでは dnf リポジトリは更新されない。バージョンタグの push が
+トリガーになる。必ず以下のコマンドを使うこと:
+
+```sh
+make release VERSION=1.1
+```
+
+これが `v1.1` タグを push し、[kter/linux-pkg](https://github.com/kter/linux-pkg) の
+CI が自動的に RPM をビルド・署名・`repo.devtools.site` へ公開する。
+
 ### sway config への追記（初回のみ）
 
 `~/.config/sway/config` に以下を追加すると sway 起動時に自動実行される：
