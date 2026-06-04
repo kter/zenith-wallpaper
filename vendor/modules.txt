@@ -1,0 +1,23 @@
+# github.com/godbus/dbus/v5 v5.2.2
+## explicit; go 1.20
+github.com/godbus/dbus/v5
+# github.com/soniakeys/meeus/v3 v3.0.1
+## explicit
+github.com/soniakeys/meeus/v3/base
+github.com/soniakeys/meeus/v3/coord
+github.com/soniakeys/meeus/v3/elementequinox
+github.com/soniakeys/meeus/v3/globe
+github.com/soniakeys/meeus/v3/julian
+github.com/soniakeys/meeus/v3/nutation
+github.com/soniakeys/meeus/v3/precess
+github.com/soniakeys/meeus/v3/sidereal
+# github.com/soniakeys/unit v1.0.0
+## explicit
+github.com/soniakeys/unit
+# golang.org/x/image v0.41.0
+## explicit; go 1.25.0
+golang.org/x/image/draw
+golang.org/x/image/math/f64
+# golang.org/x/sys v0.27.0
+## explicit; go 1.18
+golang.org/x/sys/unix
