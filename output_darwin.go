@@ -25,7 +25,10 @@ func GetOutputs() ([]Output, error) {
 				Name       string `json:"_name"`
 				Pixels     string `json:"_spdisplays_pixels"`
 				Resolution string `json:"_spdisplays_resolution"`
-				Rotation   string `json:"spdisplays_rotation"`
+				// Rotation is "spdisplays_supported" (string) when upright
+				// but a bare number (e.g. 90) when rotated, so it cannot
+				// be unmarshalled into a single concrete type.
+				Rotation json.RawMessage `json:"spdisplays_rotation"`
 			} `json:"spdisplays_ndrvs"`
 		} `json:"SPDisplaysDataType"`
 	}
@@ -44,9 +47,8 @@ func GetOutputs() ([]Output, error) {
 			if !ok || w <= 0 || h <= 0 {
 				continue
 			}
-			// Rotation reads "spdisplays_supported" when upright and the
-			// angle ("90", "270", ...) when rotated.
-			if deg, err := strconv.Atoi(strings.TrimSpace(d.Rotation)); err == nil {
+			rot := strings.Trim(strings.TrimSpace(string(d.Rotation)), `"`)
+			if deg, err := strconv.Atoi(rot); err == nil {
 				if deg == 90 || deg == 270 {
 					w, h = h, w
 				}
