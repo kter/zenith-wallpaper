@@ -100,7 +100,7 @@ gh run list --repo kter/zenith-wallpaper --limit 2
 確認する。この run には2つの job がある:
 - `dispatch` — linux-pkg への RPM ビルド依頼
 - `homebrew` — kter/homebrew-tap の formula を新バージョン・新 sha256 に bump
-  (secret `HOMEBREW_TAP_TOKEN` が必要)
+  (secret `HOMEBREW_TAP_DEPLOY_KEY` = tap の write 用 deploy key が必要)
 
 失敗なら `gh run view <id> --repo kter/zenith-wallpaper --log` でログを表示する。
 `homebrew` job 成功後、`gh api repos/kter/homebrew-tap/commits/main` で

@@ -26,12 +26,16 @@ jobs:
     steps:
       - name: Bump formula in kter/homebrew-tap
         env:
-          TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          DEPLOY_KEY: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY }}
         run: |
           VERSION="${GITHUB_REF_NAME#v}"   # v1.1 -> 1.1
           URL="https://github.com/kter/zenith-wallpaper/archive/refs/tags/${GITHUB_REF_NAME}.tar.gz"
           SHA=$(curl -fsSL "$URL" | sha256sum | awk '{print $1}')
-          git clone "https://x-access-token:${TOKEN}@github.com/kter/homebrew-tap.git"
+          mkdir -p ~/.ssh
+          echo "$DEPLOY_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null
+          git clone git@github.com:kter/homebrew-tap.git
           cd homebrew-tap
           sed -i -E \
             -e "s|archive/refs/tags/v[0-9.]+\.tar\.gz|archive/refs/tags/${GITHUB_REF_NAME}.tar.gz|" \

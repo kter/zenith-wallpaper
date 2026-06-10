@@ -101,8 +101,9 @@ make release VERSION=1.1
 2. release.yml の `homebrew` job が [kter/homebrew-tap](https://github.com/kter/homebrew-tap)
    の formula を新バージョン・新 sha256 に自動 bump（brew）
 
-homebrew job には `kter/homebrew-tap` への contents:write 権限を持つ
-fine-grained PAT を secret `HOMEBREW_TAP_TOKEN` として登録しておく必要がある。
+homebrew job は `kter/homebrew-tap` の write 権限付き deploy key
+(secret `HOMEBREW_TAP_DEPLOY_KEY`)で push する。鍵を再発行する場合は
+`ssh-keygen -t ed25519` → tap 側に deploy key (write) 登録 → secret 更新。
 
 ### sway config への追記（初回のみ）
 
