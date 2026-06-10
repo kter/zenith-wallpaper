@@ -9,7 +9,15 @@ import (
 	"time"
 )
 
+// version is injected at build time via -ldflags "-X main.version=X.Y".
+var version = "dev"
+
 func main() {
+	if len(os.Args) > 1 && (os.Args[1] == "--version" || os.Args[1] == "-v") {
+		fmt.Println("zenith-wallpaper", version)
+		return
+	}
+
 	loc := GetLocation()
 	tz, err := time.LoadLocation(loc.TZ)
 	if err != nil {
@@ -37,10 +45,10 @@ func main() {
 
 	outputs, err := GetOutputs()
 	if err != nil {
-		log.Fatalf("sway outputs: %v", err)
+		log.Fatalf("outputs: %v", err)
 	}
 	if len(outputs) == 0 {
-		log.Fatal("no active sway outputs found")
+		log.Fatal("no active outputs found")
 	}
 
 	cacheDir := cacheDir()
@@ -66,8 +74,8 @@ func main() {
 		f.Close()
 		log.Printf("wrote %s", path)
 
-		if err := SetWallpaper(out.Name, path); err != nil {
-			log.Printf("swaymsg %s: %v (image saved, will apply on next login)", out.Name, err)
+		if err := SetWallpaper(out, path); err != nil {
+			log.Printf("set wallpaper %s: %v (image saved, will apply on next login)", out.Name, err)
 		}
 	}
 }
@@ -90,6 +98,3 @@ func sanitize(s string) string {
 	}
 	return string(out)
 }
-
-// Provide a compile-time check that fmt is used.
-var _ = fmt.Sprintf

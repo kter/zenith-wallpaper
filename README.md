@@ -1,7 +1,8 @@
 # zenith-wallpaper
 
-現在地・現在時刻から計算した**実際の夜空**を sway のデスクトップ壁紙として表示するツール。
+現在地・現在時刻から計算した**実際の夜空**をデスクトップ壁紙として表示するツール。
 「ラップトップの場所から真上を見上げた全天ドーム」を Lambert 等積方位投影で描画し、1時間ごとに自動更新する。
+Linux (sway) と macOS に対応。
 
 ![スクリーンショット例](https://www.eso.org/public/images/eso0932a/) <!-- placeholder, replace with actual screenshot -->
 
@@ -21,16 +22,21 @@
 
 ### 位置情報の取得順
 
-1. GeoClue2（D-Bus）
+1. GeoClue2（D-Bus、Linux のみ）
 2. ipinfo.io（HTTP、インターネット接続時）
 3. `~/.cache/zenith-wallpaper/location.json`（前回キャッシュ）
 4. フォールバック：グリニッジ (51.48°N, 0.00°E)
 
 ## 要件
 
+**Linux:**
 - [sway](https://swaywm.org/) (Wayland compositor)
 - Go 1.21 以上（[mise](https://mise.jdx.dev/) 経由でも可）
 - `swaymsg`（sway に同梱）
+
+**macOS:**
+- macOS Sonoma 以降（Apple Silicon / Intel）
+- [Homebrew](https://brew.sh/)
 
 ## インストール
 
@@ -45,7 +51,32 @@ sudo dnf install zenith-wallpaper
 
 インストール後、timer の有効化と sway config の追記が必要（下記参照）。
 
-### ソースから（mise / Go）
+### Homebrew（macOS）
+
+```sh
+brew tap kter/tap
+brew install zenith-wallpaper
+
+# 初回のみ: Terminal から一度実行し、System Events の
+# オートメーション許可ダイアログを承認する
+zenith-wallpaper
+
+# 毎時自動更新を有効化（launchd 経由）
+brew services start zenith-wallpaper
+```
+
+ログは `$(brew --prefix)/var/log/zenith-wallpaper.log` に出力される。
+
+**macOS の注意点:**
+- 壁紙の適用は System Events の AppleScript 経由。初回実行時に
+  オートメーション許可（TCC）のダイアログが出るので承認すること。
+  許可しないと `osascript` がエラー -1743 で失敗する。
+- [desktoppr](https://github.com/scriptingosx/desktoppr) が PATH にあれば
+  そちらを優先して使う（Apple Events 不使用のため TCC 許可が不要）。
+- Sonoma 以降では壁紙は各ディスプレイの**現在の操作スペース**にのみ適用される。
+  他のスペースは次回そのスペースで実行された時に更新される。
+
+### ソースから（mise / Go、Linux）
 
 ```sh
 git clone https://github.com/kter/zenith-wallpaper
@@ -63,8 +94,15 @@ main への変更だけでは dnf リポジトリは更新されない。バー�
 make release VERSION=1.1
 ```
 
-これが `v1.1` タグを push し、[kter/linux-pkg](https://github.com/kter/linux-pkg) の
-CI が自動的に RPM をビルド・署名・`repo.devtools.site` へ公開する。
+これが `v1.1` タグを push し、以下の2系統が並走する:
+
+1. [kter/linux-pkg](https://github.com/kter/linux-pkg) の CI が RPM をビルド・署名・
+   `repo.devtools.site` へ公開（dnf）
+2. release.yml の `homebrew` job が [kter/homebrew-tap](https://github.com/kter/homebrew-tap)
+   の formula を新バージョン・新 sha256 に自動 bump（brew）
+
+homebrew job には `kter/homebrew-tap` への contents:write 権限を持つ
+fine-grained PAT を secret `HOMEBREW_TAP_TOKEN` として登録しておく必要がある。
 
 ### sway config への追記（初回のみ）
 
@@ -119,6 +157,8 @@ journalctl --user -u zenith-wallpaper.service -n 20
 |------|------|
 | `~/.cache/zenith-wallpaper/<出力名>.png` | 各ディスプレイの壁紙 PNG |
 | `~/.cache/zenith-wallpaper/location.json` | 前回取得した位置情報（オフライン時のフォールバック） |
+
+macOS では `~/.cache` の代わりに `~/Library/Caches/zenith-wallpaper/` を使う。
 
 画像・パノラマ・星表はバイナリに同梱しているため、初回ダウンロードは不要。
 

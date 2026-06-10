@@ -2,15 +2,17 @@
 name: zenith-release
 description: >-
   zenith-wallpaper の実装・修正が完了したとき、コミット・push・make release・
-  linux-pkg CI 監視まで一貫して行い、dnf リポジトリへの RPM 公開を完結させる。
+  CI 監視まで一貫して行い、dnf リポジトリへの RPM 公開と Homebrew tap の
+  formula bump を完結させる。
   「実装完了」「修正完了」「デプロイして」「反映して」「リリース」「make release」
-  「linux-pkg に登録」「RPM を更新」などのワードが出たら積極的に起動すること。
+  「linux-pkg に登録」「RPM を更新」「brew を更新」などのワードが出たら積極的に起動すること。
   このスキルを使わずに git commit・git tag・make release を手動で行ってはいけない。
 ---
 
-# zenith-release — コミットから RPM 公開まで
+# zenith-release — コミットから RPM / Homebrew 公開まで
 
-zenith-wallpaper への変更を `repo.devtools.site` の dnf リポジトリへ確実に届ける。
+zenith-wallpaper への変更を `repo.devtools.site` の dnf リポジトリと
+`kter/homebrew-tap`(brew)へ確実に届ける。
 タグ push は公開ビルドを起動する不可逆操作なので、各ステップでユーザーの確認を
 取りながら進む。
 
@@ -94,8 +96,15 @@ sleep 5
 gh run list --repo kter/zenith-wallpaper --limit 2
 ```
 
-`Release (trigger RPM build)` が `completed / success` であることを確認する。
+`Release (RPM build + Homebrew tap bump)` が `completed / success` であることを
+確認する。この run には2つの job がある:
+- `dispatch` — linux-pkg への RPM ビルド依頼
+- `homebrew` — kter/homebrew-tap の formula を新バージョン・新 sha256 に bump
+  (secret `HOMEBREW_TAP_TOKEN` が必要)
+
 失敗なら `gh run view <id> --repo kter/zenith-wallpaper --log` でログを表示する。
+`homebrew` job 成功後、`gh api repos/kter/homebrew-tap/commits/main` で
+formula bump コミットが入ったことも確認できる。
 
 ### 5b. linux-pkg 側の build-rpm.yml を特定・監視
 
@@ -114,8 +123,9 @@ gh run watch <run-id> --repo kter/linux-pkg
 
 **成功時:**
 ```
-✅ zenith-wallpaper vX.Y の RPM が公開されました。
-   `sudo dnf upgrade zenith-wallpaper` で更新できます。
+✅ zenith-wallpaper vX.Y が公開されました。
+   Fedora: `sudo dnf upgrade zenith-wallpaper`
+   macOS:  `brew update && brew upgrade zenith-wallpaper`
 ```
 
 **失敗時:**

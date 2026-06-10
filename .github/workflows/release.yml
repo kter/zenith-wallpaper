@@ -1,4 +1,4 @@
-name: Release (trigger RPM build)
+name: Release (RPM build + Homebrew tap bump)
 
 on:
   push:
@@ -20,3 +20,24 @@ jobs:
             https://api.github.com/repos/kter/linux-pkg/dispatches \
             -d "{\"event_type\":\"zenith-wallpaper-release\",\"client_payload\":{\"version\":\"$VERSION\",\"ref\":\"$GITHUB_REF_NAME\"}}"
           echo "Dispatched version=$VERSION ref=$GITHUB_REF_NAME to kter/linux-pkg"
+
+  homebrew:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Bump formula in kter/homebrew-tap
+        env:
+          TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"   # v1.1 -> 1.1
+          URL="https://github.com/kter/zenith-wallpaper/archive/refs/tags/${GITHUB_REF_NAME}.tar.gz"
+          SHA=$(curl -fsSL "$URL" | sha256sum | awk '{print $1}')
+          git clone "https://x-access-token:${TOKEN}@github.com/kter/homebrew-tap.git"
+          cd homebrew-tap
+          sed -i -E \
+            -e "s|archive/refs/tags/v[0-9.]+\.tar\.gz|archive/refs/tags/${GITHUB_REF_NAME}.tar.gz|" \
+            -e "s|^(  sha256 \")[0-9a-f]+(\".*)$|\1${SHA}\2|" \
+            Formula/zenith-wallpaper.rb
+          git -c user.name=github-actions -c user.email=actions@github.com \
+            commit -am "zenith-wallpaper ${VERSION}"
+          git push
+          echo "Bumped kter/homebrew-tap to ${VERSION} (sha256=${SHA})"

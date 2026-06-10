@@ -1,3 +1,5 @@
+//go:build linux
+
 package main
 
 import (
@@ -7,19 +9,6 @@ import (
 	"os/exec"
 	"path/filepath"
 )
-
-// SwayOutput holds the relevant fields from swaymsg -t get_outputs.
-type SwayOutput struct {
-	Name    string `json:"name"`
-	Active  bool   `json:"active"`
-	Width   int    // logical pixels
-	Height  int
-	Current struct {
-		Width  int `json:"width"`
-		Height int `json:"height"`
-	} `json:"current_mode"`
-	Transform string `json:"transform"`
-}
 
 // findSwaySock looks for a sway IPC socket in the user's runtime dir,
 // falling back to the SWAYSOCK env var. It sets the env var for child processes.
@@ -36,7 +25,7 @@ func findSwaySock() {
 }
 
 // GetOutputs queries sway for connected, active outputs.
-func GetOutputs() ([]SwayOutput, error) {
+func GetOutputs() ([]Output, error) {
 	findSwaySock()
 	out, err := exec.Command("swaymsg", "-t", "get_outputs").Output()
 	if err != nil {
@@ -58,15 +47,14 @@ func GetOutputs() ([]SwayOutput, error) {
 	if err := json.Unmarshal(out, &raw); err != nil {
 		return nil, err
 	}
-	var outputs []SwayOutput
+	var outputs []Output
 	for _, r := range raw {
 		if !r.Active {
 			continue
 		}
-		o := SwayOutput{
-			Name:      r.Name,
-			Active:    r.Active,
-			Transform: r.Transform,
+		o := Output{
+			Name:  r.Name,
+			Index: len(outputs),
 		}
 		// Use physical resolution (current_mode) so the image matches
 		// what swaybg displays at 1:1 pixels on HiDPI screens.
@@ -85,9 +73,9 @@ func GetOutputs() ([]SwayOutput, error) {
 	return outputs, nil
 }
 
-// SetWallpaper applies an image file as the background for the named output.
-func SetWallpaper(outputName, imagePath string) error {
+// SetWallpaper applies an image file as the background for the given output.
+func SetWallpaper(out Output, imagePath string) error {
 	findSwaySock()
-	cmd := exec.Command("swaymsg", "output", outputName, "bg", imagePath, "fill")
+	cmd := exec.Command("swaymsg", "output", out.Name, "bg", imagePath, "fill")
 	return cmd.Run()
 }
