@@ -5,10 +5,12 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // GetOutputs queries system_profiler for connected displays. The reported
@@ -86,8 +88,16 @@ func SetWallpaper(out Output, imagePath string) error {
 	if err != nil {
 		abs = imagePath
 	}
+	// macOS copies the picture into its own wallpaper store and ignores a
+	// set request whose path matches the currently configured one, so
+	// overwriting the file in place never refreshes the desktop. Apply each
+	// render through a uniquely named copy and prune the previous copies.
+	target, err := uniqueWallpaperCopy(abs)
+	if err != nil {
+		return err
+	}
 	if desktoppr, err := exec.LookPath("desktoppr"); err == nil {
-		if msg, err := exec.Command(desktoppr, strconv.Itoa(out.Index), abs).CombinedOutput(); err != nil {
+		if msg, err := exec.Command(desktoppr, strconv.Itoa(out.Index), target).CombinedOutput(); err != nil {
 			return fmt.Errorf("desktoppr: %w: %s", err, strings.TrimSpace(string(msg)))
 		}
 		return nil
@@ -100,11 +110,40 @@ func SetWallpaper(out Output, imagePath string) error {
 			if display name of d is %s then set picture of d to POSIX file %s
 		end repeat
 	end if
-end tell`, appleScriptQuote(abs), appleScriptQuote(out.displayName), appleScriptQuote(abs))
+end tell`, appleScriptQuote(target), appleScriptQuote(out.displayName), appleScriptQuote(target))
 	if msg, err := exec.Command("osascript", "-e", script).CombinedOutput(); err != nil {
 		return fmt.Errorf("osascript: %w: %s", err, strings.TrimSpace(string(msg)))
 	}
 	return nil
+}
+
+// uniqueWallpaperCopy duplicates abs next to itself under a timestamped name
+// (e.g. "Built-in_Display.1718064000123456789.png") and removes stale copies
+// from earlier runs of the same output.
+func uniqueWallpaperCopy(abs string) (string, error) {
+	dir := filepath.Dir(abs)
+	ext := filepath.Ext(abs)
+	stem := strings.TrimSuffix(filepath.Base(abs), ext)
+	data, err := os.ReadFile(abs)
+	if err != nil {
+		return "", fmt.Errorf("read wallpaper: %w", err)
+	}
+	target := filepath.Join(dir, fmt.Sprintf("%s.%d%s", stem, time.Now().UnixNano(), ext))
+	if err := os.WriteFile(target, data, 0o644); err != nil {
+		return "", fmt.Errorf("copy wallpaper: %w", err)
+	}
+	// The desktop keeps showing the wallpaper store's internal copy, so the
+	// source files of previous runs can be removed even before the new image
+	// is applied. The pattern cannot match abs itself ("stem.png" has nothing
+	// between the two dots the pattern requires).
+	if old, err := filepath.Glob(filepath.Join(dir, stem+".*"+ext)); err == nil {
+		for _, p := range old {
+			if p != target {
+				os.Remove(p)
+			}
+		}
+	}
+	return target, nil
 }
 
 func appleScriptQuote(s string) string {
