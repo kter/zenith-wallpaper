@@ -20,9 +20,9 @@ type Location struct {
 }
 
 // defaultLocation is used only when all location sources fail.
-// Greenwich is chosen as a neutral fallback; in practice geoclue or
+// The Tokyo Imperial Palace is used as the fallback; in practice geoclue or
 // ipinfo.io will supply the actual coordinates before this is reached.
-var defaultLocation = Location{Lat: 51.4779, Lon: -0.0015, TZ: "UTC"}
+var defaultLocation = Location{Lat: 35.6852, Lon: 139.7528, TZ: "Asia/Tokyo"}
 
 func cacheFile() string {
 	base, _ := os.UserCacheDir()
