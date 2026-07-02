@@ -14,8 +14,8 @@ import (
 )
 
 // GetOutputs queries system_profiler for connected displays. The reported
-// _spdisplays_pixels value is the native panel resolution, matching the
-// physical-pixel convention of the Sway implementation.
+// _spdisplays_pixels value is the framebuffer resolution in physical pixels,
+// matching the physical-pixel convention of the Sway implementation.
 func GetOutputs() ([]Output, error) {
 	raw, err := exec.Command("system_profiler", "SPDisplaysDataType", "-json").Output()
 	if err != nil {
@@ -27,10 +27,6 @@ func GetOutputs() ([]Output, error) {
 				Name       string `json:"_name"`
 				Pixels     string `json:"_spdisplays_pixels"`
 				Resolution string `json:"_spdisplays_resolution"`
-				// Rotation is "spdisplays_supported" (string) when upright
-				// but a bare number (e.g. 90) when rotated, so it cannot
-				// be unmarshalled into a single concrete type.
-				Rotation json.RawMessage `json:"spdisplays_rotation"`
 			} `json:"spdisplays_ndrvs"`
 		} `json:"SPDisplaysDataType"`
 	}
@@ -49,12 +45,11 @@ func GetOutputs() ([]Output, error) {
 			if !ok || w <= 0 || h <= 0 {
 				continue
 			}
-			rot := strings.Trim(strings.TrimSpace(string(d.Rotation)), `"`)
-			if deg, err := strconv.Atoi(rot); err == nil {
-				if deg == 90 || deg == 270 {
-					w, h = h, w
-				}
-			}
+			// Unlike sway's current_mode, _spdisplays_pixels already reflects
+			// the rotated framebuffer (a portrait display reports h > w), so
+			// no width/height swap on spdisplays_rotation — swapping here
+			// would double-rotate and yield a landscape image for a portrait
+			// screen.
 			name := d.Name
 			seen[name]++
 			if n := seen[name]; n > 1 {
