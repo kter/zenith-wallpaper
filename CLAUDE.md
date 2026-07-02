@@ -28,5 +28,10 @@ make release VERSION=X.Y
 - macOS: `output_darwin.go` (system_profiler + osascript/desktoppr),
   `location_darwin.go` (スタブ、ipinfo.io フォールバックに委ねる)
 
-変更時は両方のコンパイルを確認すること:
-`GOOS=darwin GOARCH=arm64 go build -o /dev/null .`
+純粋ロジック (JSON パース等) はビルドタグなしの共有ファイル
+(`sysprofiler.go` / `swayoutputs.go` / `wallpaperfile.go`) に置き、どの開発
+プラットフォームからでもテストできるようにしている。exec を伴う部分だけを
+タグ付きファイルに残すこと。
+
+変更時は `make test` を実行すること (vet + 全テスト + darwin クロスコンパイル
+確認を含む)。CI (test.yml) でも同じチェックが走る。

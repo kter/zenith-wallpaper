@@ -5,12 +5,20 @@ UNITDIR  := $(HOME)/.config/systemd/user
 MISE     := $(shell command -v mise 2>/dev/null || echo mise)
 GO       := $(MISE) exec go -- go
 
-.PHONY: all build install install-units uninstall clean release
+.PHONY: all build test install install-units uninstall clean release
 
 all: build
 
 build:
 	$(GO) build -o $(BINARY) .
+
+# Runs vet + tests, then verifies the darwin build still compiles
+# (platform-specific files are build-tagged; see CLAUDE.md).
+test:
+	$(GO) vet ./...
+	$(GO) test ./...
+	GOOS=darwin GOARCH=arm64 $(GO) build -o /dev/null .
+	GOOS=darwin GOARCH=arm64 $(GO) vet .
 
 install: build
 	install -m 0755 $(BINARY) $(DESTBIN)
