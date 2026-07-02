@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -78,6 +79,11 @@ func tryIPInfo() (Location, bool) {
 	}
 	defer resp.Body.Close()
 	b, _ := io.ReadAll(resp.Body)
+	return parseIPInfo(b)
+}
+
+// parseIPInfo extracts a Location from an ipinfo.io/json response body.
+func parseIPInfo(b []byte) (Location, bool) {
 	var r ipInfoResp
 	if err := json.Unmarshal(b, &r); err != nil {
 		return Location{}, false
@@ -96,7 +102,9 @@ func tryIPInfo() (Location, bool) {
 // inferTZ is a coarse fallback when no timezone is returned.
 func inferTZ(lat, lon float64) string {
 	_ = lat
-	offset := int(lon/15.0 + 0.5)
+	// math.Round, not int(x+0.5): truncation would round western (negative)
+	// longitudes toward zero and shift them one hour east.
+	offset := int(math.Round(lon / 15.0))
 	if offset == 0 {
 		return "UTC"
 	}

@@ -38,7 +38,10 @@ func NewObserverTime(loc Location, t time.Time) ObserverTime {
 		jde:  jde,
 		gst:  gst,
 		phi:  unit.AngleFromDeg(loc.Lat),
-		psi:  unit.AngleFromDeg(loc.Lon),
+		// meeus follows the book's convention of longitude positive WEST of
+		// Greenwich (H = θ0 - ψ - α), so the geographic east-positive
+		// longitude must be negated here.
+		psi:  unit.AngleFromDeg(-loc.Lon),
 		prec: p,
 	}
 }

@@ -80,10 +80,12 @@ func (mw *MilkyWay) Sample(l, b float64) color.RGBA {
 	g := bilerp(c00[1], c10[1], c01[1], c11[1], tx, ty)
 	b2 := bilerp(c00[2], c10[2], c01[2], c11[2], tx, ty)
 
+	// Round rather than truncate: bilerp of equal inputs must reproduce the
+	// input byte exactly despite floating-point error.
 	return color.RGBA{
-		R: uint8(clamp01(r) * 255),
-		G: uint8(clamp01(g) * 255),
-		B: uint8(clamp01(b2) * 255),
+		R: uint8(clamp01(r)*255 + 0.5),
+		G: uint8(clamp01(g)*255 + 0.5),
+		B: uint8(clamp01(b2)*255 + 0.5),
 		A: 255,
 	}
 }
