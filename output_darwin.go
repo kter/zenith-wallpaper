@@ -4,10 +4,14 @@ package main
 
 import (
 	"fmt"
+	"log"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 )
 
 // GetOutputs queries system_profiler for connected displays. The reported
@@ -21,11 +25,55 @@ func GetOutputs() ([]Output, error) {
 	return parseSystemProfilerOutputs(raw)
 }
 
+// wallpaperStoreOnce guards the per-run Spaces-override check: main calls
+// SetWallpaper once per display, but the store must be inspected/reset only
+// once per invocation, before the first set.
+var wallpaperStoreOnce sync.Once
+
+// resetWallpaperStoreIfNeeded works around a Spaces limitation: since Sonoma
+// the wallpaper API only changes the currently visible Space of each display,
+// so any Space with its own entry in the wallpaper store keeps a frozen image
+// forever. When such per-Space overrides exist, delete the store and restart
+// WallpaperAgent; afterwards every Space follows the display-level
+// configuration that the subsequent SetWallpaper calls write. When no
+// overrides exist this is a no-op, so the desktop does not flash on normal
+// timer runs.
+func resetWallpaperStoreIfNeeded() {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return
+	}
+	index := filepath.Join(home,
+		"Library", "Application Support", "com.apple.wallpaper", "Store", "Index.plist")
+	plistXML, err := exec.Command("plutil", "-convert", "xml1", "-o", "-", index).Output()
+	if err != nil {
+		// No store (pre-Sonoma) or unreadable: nothing to reset.
+		return
+	}
+	n, err := spacesOverrideCount(plistXML)
+	if err != nil {
+		log.Printf("wallpaper store: %v (skipping Spaces reset)", err)
+		return
+	}
+	if n == 0 {
+		return
+	}
+	log.Printf("wallpaper store: clearing %d per-Space override(s) so all Spaces update", n)
+	if err := os.Remove(index); err != nil {
+		log.Printf("wallpaper store: remove: %v", err)
+		return
+	}
+	_ = exec.Command("killall", "WallpaperAgent").Run()
+	// Give the agent a moment to come back before the first set request.
+	time.Sleep(2 * time.Second)
+}
+
 // SetWallpaper applies an image file as the background for the given display.
 // It prefers desktoppr (no Apple Events, so no TCC automation prompt) when
 // installed, and falls back to scripting System Events via osascript, which
 // requires a one-time automation approval on first run.
 func SetWallpaper(out Output, imagePath string) error {
+	wallpaperStoreOnce.Do(resetWallpaperStoreIfNeeded)
 	abs, err := filepath.Abs(imagePath)
 	if err != nil {
 		abs = imagePath
