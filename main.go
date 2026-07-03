@@ -56,6 +56,14 @@ func main() {
 		log.Fatalf("cache dir: %v", err)
 	}
 
+	// Render every output before applying any wallpaper: rendering takes
+	// seconds per display, and applying mid-render would leave the desktop
+	// in a transitional state for the whole run.
+	type rendered struct {
+		out  Output
+		path string
+	}
+	var ready []rendered
 	for _, out := range outputs {
 		log.Printf("rendering %s (%dx%d)...", out.Name, out.Width, out.Height)
 		img := renderSky(ot, mw, stars, planets, out.Width, out.Height)
@@ -73,9 +81,12 @@ func main() {
 		}
 		f.Close()
 		log.Printf("wrote %s", path)
+		ready = append(ready, rendered{out, path})
+	}
 
-		if err := SetWallpaper(out, path); err != nil {
-			log.Printf("set wallpaper %s: %v (image saved, will apply on next login)", out.Name, err)
+	for _, r := range ready {
+		if err := SetWallpaper(r.out, r.path); err != nil {
+			log.Printf("set wallpaper %s: %v (image saved, will apply on next login)", r.out.Name, err)
 		}
 	}
 }
