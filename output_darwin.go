@@ -174,8 +174,11 @@ end tell`, appleScriptQuote(target), appleScriptQuote(out.displayName), appleScr
 	if strings.TrimSpace(string(msg)) != "0" {
 		return nil
 	}
-	log.Printf("osascript: no desktop named %q (localised name?); falling back to desktop %d",
-		out.displayName, out.Index+1)
+	// Expected on non-English systems: System Events localises display
+	// names (e.g. "Color LCD" → "カラーLCD") while system_profiler always
+	// reports English, so the positional path is the normal one there.
+	log.Printf("applying to desktop %d by position (%s: System Events uses a localised display name)",
+		out.Index+1, out.displayName)
 	fallback := fmt.Sprintf(
 		`tell application "System Events" to set picture of desktop %d to POSIX file %s`,
 		out.Index+1, appleScriptQuote(target))
