@@ -13,7 +13,7 @@ build:
 	$(GO) build -o $(BINARY) .
 
 # Runs vet + tests, then verifies the darwin build still compiles
-# (platform-specific files are build-tagged; see CLAUDE.md).
+# (platform-specific files are build-tagged; see AGENTS.md).
 test:
 	$(GO) vet ./...
 	$(GO) test ./...
