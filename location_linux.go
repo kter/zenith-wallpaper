@@ -9,6 +9,8 @@ import (
 	"github.com/godbus/dbus/v5"
 )
 
+const geoclue = "org.freedesktop.GeoClue2"
+
 // tryPlatformLocation queries GeoClue2 over the system D-Bus.
 func tryPlatformLocation() (Location, bool) {
 	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Second)
@@ -20,9 +22,9 @@ func tryPlatformLocation() (Location, bool) {
 	}
 	defer conn.Close()
 
-	manager := conn.Object("org.freedesktop.GeoClue2", "/org/freedesktop/GeoClue2/Manager")
+	manager := conn.Object(geoclue, "/org/freedesktop/GeoClue2/Manager")
 	var clientPath dbus.ObjectPath
-	call := manager.CallWithContext(ctx, "org.freedesktop.GeoClue2.Manager.GetClient", 0)
+	call := manager.CallWithContext(ctx, geoclue+".Manager.GetClient", 0)
 	if call.Err != nil {
 		return Location{}, false
 	}
@@ -30,27 +32,27 @@ func tryPlatformLocation() (Location, bool) {
 		return Location{}, false
 	}
 
-	client := conn.Object("org.freedesktop.GeoClue2", clientPath)
-	_ = client.SetProperty("org.freedesktop.GeoClue2.Client.DesktopId", dbus.MakeVariant("zenith-wallpaper"))
-	_ = client.SetProperty("org.freedesktop.GeoClue2.Client.RequestedAccuracyLevel", dbus.MakeVariant(uint32(4)))
+	client := conn.Object(geoclue, clientPath)
+	_ = client.SetProperty(geoclue+".Client.DesktopId", dbus.MakeVariant("zenith-wallpaper"))
+	_ = client.SetProperty(geoclue+".Client.RequestedAccuracyLevel", dbus.MakeVariant(uint32(4)))
 
 	done := make(chan Location, 1)
 	_ = conn.AddMatchSignal(
-		dbus.WithMatchInterface("org.freedesktop.GeoClue2.Client"),
+		dbus.WithMatchInterface(geoclue+".Client"),
 		dbus.WithMatchMember("LocationUpdated"),
 		dbus.WithMatchObjectPath(clientPath),
 	)
 	signals := make(chan *dbus.Signal, 1)
 	conn.Signal(signals)
 
-	startCall := client.CallWithContext(ctx, "org.freedesktop.GeoClue2.Client.Start", 0)
+	startCall := client.CallWithContext(ctx, geoclue+".Client.Start", 0)
 	if startCall.Err != nil {
 		return Location{}, false
 	}
 
 	go func() {
 		for sig := range signals {
-			if sig.Name != "org.freedesktop.GeoClue2.Client.LocationUpdated" {
+			if sig.Name != geoclue+".Client.LocationUpdated" {
 				continue
 			}
 			if len(sig.Body) < 2 {
@@ -60,9 +62,9 @@ func tryPlatformLocation() (Location, bool) {
 			if !ok {
 				continue
 			}
-			locObj := conn.Object("org.freedesktop.GeoClue2", locPath)
-			latV, err1 := locObj.GetProperty("org.freedesktop.GeoClue2.Location.Latitude")
-			lonV, err2 := locObj.GetProperty("org.freedesktop.GeoClue2.Location.Longitude")
+			locObj := conn.Object(geoclue, locPath)
+			latV, err1 := locObj.GetProperty(geoclue + ".Location.Latitude")
+			lonV, err2 := locObj.GetProperty(geoclue + ".Location.Longitude")
 			if err1 != nil || err2 != nil {
 				continue
 			}
@@ -71,14 +73,14 @@ func tryPlatformLocation() (Location, bool) {
 			if !ok1 || !ok2 {
 				continue
 			}
-			done <- Location{Lat: lat, Lon: lon, TZ: inferTZ(lat, lon)}
+			done <- Location{Lat: lat, Lon: lon, TZ: inferTZ(lon)}
 			return
 		}
 	}()
 
 	select {
 	case loc := <-done:
-		_ = client.Call("org.freedesktop.GeoClue2.Client.Stop", 0)
+		_ = client.Call(geoclue+".Client.Stop", 0)
 		return loc, true
 	case <-ctx.Done():
 		return Location{}, false

@@ -53,17 +53,3 @@ func TestUniqueWallpaperCopyMissingSource(t *testing.T) {
 		t.Error("expected error for missing source file")
 	}
 }
-
-func TestAppleScriptQuote(t *testing.T) {
-	tests := []struct{ in, want string }{
-		{"plain", `"plain"`},
-		{`with "quotes"`, `"with \"quotes\""`},
-		{`back\slash`, `"back\\slash"`},
-		{`both "\"`, `"both \"\\\""`},
-	}
-	for _, tt := range tests {
-		if got := appleScriptQuote(tt.in); got != tt.want {
-			t.Errorf("appleScriptQuote(%q) = %s, want %s", tt.in, got, tt.want)
-		}
-	}
-}

@@ -61,8 +61,8 @@ func clearSpacesOverridesIfNeeded() {
 		return
 	}
 	log.Printf("wallpaper store: clearing %d per-Space override(s) so every Space follows the display wallpaper", n)
-	if msg, err := exec.Command("plutil", "-replace", "Spaces", "-xml", "<dict/>", index).CombinedOutput(); err != nil {
-		log.Printf("wallpaper store: plutil -replace: %v: %s", err, strings.TrimSpace(string(msg)))
+	if _, err := runCombined("plutil", "-replace", "Spaces", "-xml", "<dict/>", index); err != nil {
+		log.Printf("wallpaper store: plutil -replace: %v", err)
 		return
 	}
 	_ = exec.Command("killall", "WallpaperAgent").Run()
@@ -117,8 +117,8 @@ func setViaDesktoppr(desktoppr string, out Output, target string) error {
 		if attempt > 0 {
 			time.Sleep(1500 * time.Millisecond)
 		}
-		if msg, err := exec.Command(desktoppr, strconv.Itoa(out.Index), target).CombinedOutput(); err != nil {
-			lastErr = fmt.Errorf("desktoppr: %w: %s", err, strings.TrimSpace(string(msg)))
+		if _, err := runCombined(desktoppr, strconv.Itoa(out.Index), target); err != nil {
+			lastErr = fmt.Errorf("desktoppr: %w", err)
 			continue
 		}
 		ok, verifiable := desktopprShows(desktoppr, out.Index, target)
@@ -138,13 +138,7 @@ func desktopprShows(desktoppr string, index int, target string) (ok, verifiable 
 	if err != nil {
 		return false, false
 	}
-	lines := strings.Split(strings.TrimSpace(string(raw)), "\n")
-	if index >= len(lines) {
-		return false, true
-	}
-	// Match on the unique timestamped basename: macOS may report a
-	// normalised variant of the full path.
-	return strings.Contains(lines[index], filepath.Base(target)), true
+	return desktopprListsTarget(raw, index, target)
 }
 
 // setViaOsascript scripts System Events. Desktops are matched by display
@@ -153,25 +147,11 @@ func desktopprShows(desktoppr string, index int, target string) (ok, verifiable 
 // system_profiler always reports English) it falls back to the desktop
 // ordinal.
 func setViaOsascript(out Output, target string) error {
-	script := fmt.Sprintf(`tell application "System Events"
-	if (count of desktops) is 1 then
-		set picture of every desktop to POSIX file %s
-		return "1"
-	end if
-	set matched to 0
-	repeat with d in desktops
-		if display name of d is %s then
-			set picture of d to POSIX file %s
-			set matched to matched + 1
-		end if
-	end repeat
-	return matched as text
-end tell`, appleScriptQuote(target), appleScriptQuote(out.displayName), appleScriptQuote(target))
-	msg, err := exec.Command("osascript", "-e", script).CombinedOutput()
+	matched, err := runCombined("osascript", "-e", osascriptSetByNameScript(target, out.displayName))
 	if err != nil {
-		return fmt.Errorf("osascript: %w: %s", err, strings.TrimSpace(string(msg)))
+		return fmt.Errorf("osascript: %w", err)
 	}
-	if strings.TrimSpace(string(msg)) != "0" {
+	if matched != "0" {
 		return nil
 	}
 	// Expected on non-English systems: System Events localises display
@@ -179,11 +159,20 @@ end tell`, appleScriptQuote(target), appleScriptQuote(out.displayName), appleScr
 	// reports English, so the positional path is the normal one there.
 	log.Printf("applying to desktop %d by position (%s: System Events uses a localised display name)",
 		out.Index+1, out.displayName)
-	fallback := fmt.Sprintf(
-		`tell application "System Events" to set picture of desktop %d to POSIX file %s`,
-		out.Index+1, appleScriptQuote(target))
-	if msg, err := exec.Command("osascript", "-e", fallback).CombinedOutput(); err != nil {
-		return fmt.Errorf("osascript desktop %d: %w: %s", out.Index+1, err, strings.TrimSpace(string(msg)))
+	if _, err := runCombined("osascript", "-e", osascriptSetByOrdinalScript(out.Index+1, target)); err != nil {
+		return fmt.Errorf("osascript desktop %d: %w", out.Index+1, err)
 	}
 	return nil
+}
+
+// runCombined runs a command and returns its trimmed combined output. On
+// failure the output is folded into the error, since these tools report the
+// reason on stdout/stderr rather than through the exit status.
+func runCombined(name string, args ...string) (string, error) {
+	msg, err := exec.Command(name, args...).CombinedOutput()
+	out := strings.TrimSpace(string(msg))
+	if err != nil {
+		return out, fmt.Errorf("%w: %s", err, out)
+	}
+	return out, nil
 }

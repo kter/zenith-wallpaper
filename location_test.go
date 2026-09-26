@@ -20,8 +20,8 @@ func TestInferTZ(t *testing.T) {
 		{172.6, "Etc/GMT-12"},
 	}
 	for _, tt := range tests {
-		if got := inferTZ(0, tt.lon); got != tt.want {
-			t.Errorf("inferTZ(0, %v) = %q, want %q", tt.lon, got, tt.want)
+		if got := inferTZ(tt.lon); got != tt.want {
+			t.Errorf("inferTZ(%v) = %q, want %q", tt.lon, got, tt.want)
 		}
 	}
 }

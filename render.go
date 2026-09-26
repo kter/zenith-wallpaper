@@ -28,40 +28,46 @@ func renderSky(
 	// rectangle and every pixel (including corners) is covered by sky.
 	cx := float64(rw) / 2.0
 	cy := float64(rh) / 2.0
-	radius := math.Hypot(cx, cy)
+	disc := skyDisc{cx: cx, cy: cy, radius: math.Hypot(cx, cy)}
 
-	renderMilkyWay(img, ot, mw, cx, cy, radius)
-	renderStars(img, ot, stars, cx, cy, radius)
-	renderPlanets(img, planets, cx, cy, radius)
+	renderMilkyWay(img, ot, mw, disc)
+	renderStars(img, ot, stars, disc)
+	renderPlanets(img, planets, disc)
 
 	out := image.NewRGBA(image.Rect(0, 0, outW, outH))
 	xdraw.CatmullRom.Scale(out, out.Bounds(), img, img.Bounds(), xdraw.Over, nil)
 	return out
 }
 
+// skyDisc is the projected sky dome in pixel space: the horizon circle of the
+// given radius, centred on the zenith at (cx, cy).
+type skyDisc struct {
+	cx, cy, radius float64
+}
+
 // horizToPixel: Lambert azimuthal equal-area, zenith-centered.
 // North=up, East=left (looking-up view).
-func horizToPixel(altDeg, azDeg, cx, cy, radius float64) (float64, float64, bool) {
+func (d skyDisc) horizToPixel(altDeg, azDeg float64) (float64, float64, bool) {
 	if altDeg < 0 {
 		return 0, 0, false
 	}
 	zenith := (90.0 - altDeg) * math.Pi / 180.0
-	rProj := radius * math.Sqrt(2) * math.Sin(zenith/2)
+	rProj := d.radius * math.Sqrt(2) * math.Sin(zenith/2)
 	azRad := azDeg * math.Pi / 180.0
-	px := cx - rProj*math.Sin(azRad) // East → left
-	py := cy - rProj*math.Cos(azRad) // North → up
+	px := d.cx - rProj*math.Sin(azRad) // East → left
+	py := d.cy - rProj*math.Cos(azRad) // North → up
 	return px, py, true
 }
 
 // pixelToHoriz: inverse Lambert. Returns false if outside dome.
-func pixelToHoriz(px, py, cx, cy, radius float64) (alt, az float64, ok bool) {
-	dx := cx - px
-	dy := cy - py
+func (d skyDisc) pixelToHoriz(px, py float64) (alt, az float64, ok bool) {
+	dx := d.cx - px
+	dy := d.cy - py
 	rProj := math.Sqrt(dx*dx + dy*dy)
-	if rProj > radius {
+	if rProj > d.radius {
 		return 0, 0, false
 	}
-	sinHalf := rProj / (radius * math.Sqrt2)
+	sinHalf := rProj / (d.radius * math.Sqrt2)
 	if sinHalf > 1 {
 		sinHalf = 1
 	}
@@ -72,11 +78,11 @@ func pixelToHoriz(px, py, cx, cy, radius float64) (alt, az float64, ok bool) {
 	return alt, az, true
 }
 
-func renderMilkyWay(img *image.RGBA, ot ObserverTime, mw *MilkyWay, cx, cy, radius float64) {
+func renderMilkyWay(img *image.RGBA, ot ObserverTime, mw *MilkyWay, disc skyDisc) {
 	b := img.Bounds()
 	for py := b.Min.Y; py < b.Max.Y; py++ {
 		for px := b.Min.X; px < b.Max.X; px++ {
-			alt, az, ok := pixelToHoriz(float64(px), float64(py), cx, cy, radius)
+			alt, az, ok := disc.pixelToHoriz(float64(px), float64(py))
 			if !ok {
 				continue
 			}
@@ -86,13 +92,13 @@ func renderMilkyWay(img *image.RGBA, ot ObserverTime, mw *MilkyWay, cx, cy, radi
 	}
 }
 
-func renderStars(img *image.RGBA, ot ObserverTime, stars []Star, cx, cy, radius float64) {
+func renderStars(img *image.RGBA, ot ObserverTime, stars []Star, disc skyDisc) {
 	for _, s := range stars {
 		hc := ot.RADecToHoriz(s.RA, s.Dec)
 		if hc.Alt < 0 {
 			continue
 		}
-		px, py, ok := horizToPixel(hc.Alt, hc.Az, cx, cy, radius)
+		px, py, ok := disc.horizToPixel(hc.Alt, hc.Az)
 		if !ok {
 			continue
 		}
@@ -105,9 +111,9 @@ func renderStars(img *image.RGBA, ot ObserverTime, stars []Star, cx, cy, radius 
 	}
 }
 
-func renderPlanets(img *image.RGBA, planets []Planet, cx, cy, radius float64) {
+func renderPlanets(img *image.RGBA, planets []Planet, disc skyDisc) {
 	for _, p := range planets {
-		px, py, ok := horizToPixel(p.Alt, p.Az, cx, cy, radius)
+		px, py, ok := disc.horizToPixel(p.Alt, p.Az)
 		if !ok {
 			continue
 		}

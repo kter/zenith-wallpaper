@@ -14,7 +14,7 @@ make release VERSION=X.Y
 1. **dnf (Fedora)**: `kter/linux-pkg` の CI が RPM をビルド・GPG 署名・
    S3 公開 (`repo.devtools.site`)
 2. **Homebrew (macOS)**: `homebrew` job が `kter/homebrew-tap` の formula を
-   新バージョン・新 sha256 に自動 bump (secret `HOMEBREW_TAP_TOKEN` が必要)
+   新バージョン・新 sha256 に自動 bump (secret `HOMEBREW_TAP_DEPLOY_KEY` が必要)
 
 手動で `git tag` せず、常に `make release` を使う
 (clean / main / origin 同期のガードが誤リリースを防ぐ)。
@@ -29,7 +29,8 @@ make release VERSION=X.Y
   `location_darwin.go` (スタブ、ipinfo.io フォールバックに委ねる)
 
 純粋ロジック (JSON パース等) はビルドタグなしの共有ファイル
-(`sysprofiler.go` / `swayoutputs.go` / `wallpaperfile.go`) に置き、どの開発
+(`sysprofiler.go` / `swayoutputs.go` / `wallpaperfile.go` /
+`wallpaperstore.go` / `macwallpaper.go`) に置き、どの開発
 プラットフォームからでもテストできるようにしている。exec を伴う部分だけを
 タグ付きファイルに残すこと。
 

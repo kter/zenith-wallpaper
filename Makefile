@@ -38,7 +38,8 @@ uninstall:
 clean:
 	rm -f $(BINARY)
 
-# Release: create vX.Y tag and push to trigger RPM build in kter/linux-pkg
+# Release: create vX.Y tag and push; release.yml then triggers the RPM build
+# in kter/linux-pkg and bumps the Homebrew formula in kter/homebrew-tap
 release:
 ifndef VERSION
 	$(error VERSION is required, e.g. make release VERSION=1.1)
@@ -49,4 +50,4 @@ endif
 	@test "$$(git rev-parse HEAD)" = "$$(git rev-parse origin/main)" || { echo "ERROR: main is not in sync with origin/main"; exit 1; }
 	git tag v$(VERSION)
 	git push origin v$(VERSION)
-	@echo "Released v$(VERSION) — RPM build triggered in kter/linux-pkg"
+	@echo "Released v$(VERSION) — RPM build (kter/linux-pkg) and Homebrew bump (kter/homebrew-tap) triggered"

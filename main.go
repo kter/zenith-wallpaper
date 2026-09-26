@@ -68,7 +68,7 @@ func main() {
 		log.Printf("rendering %s (%dx%d)...", out.Name, out.Width, out.Height)
 		img := renderSky(ot, mw, stars, planets, out.Width, out.Height)
 
-		path := filepath.Join(cacheDir, sanitize(out.Name)+".png")
+		path := filepath.Join(cacheDir, filenameSafe(out.Name)+".png")
 		f, err := os.Create(path)
 		if err != nil {
 			log.Printf("create %s: %v", path, err)
@@ -96,8 +96,8 @@ func cacheDir() string {
 	return filepath.Join(base, "zenith-wallpaper")
 }
 
-// sanitize replaces characters unsafe for filenames.
-func sanitize(s string) string {
+// filenameSafe replaces characters unsafe for filenames.
+func filenameSafe(s string) string {
 	out := make([]byte, len(s))
 	for i := 0; i < len(s); i++ {
 		c := s[i]

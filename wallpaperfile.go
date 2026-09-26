@@ -38,9 +38,3 @@ func uniqueWallpaperCopy(abs string) (string, error) {
 	}
 	return target, nil
 }
-
-func appleScriptQuote(s string) string {
-	s = strings.ReplaceAll(s, `\`, `\\`)
-	s = strings.ReplaceAll(s, `"`, `\"`)
-	return `"` + s + `"`
-}

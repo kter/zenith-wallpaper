@@ -11,9 +11,10 @@ import (
 // Index.plist`, converted to xml1 via plutil). Since Sonoma the wallpaper API
 // only affects the currently visible Space of each display; a Space listed
 // under the root "Spaces" dictionary keeps its own frozen wallpaper until the
-// store is reset. The caller resets the store (delete + killall
-// WallpaperAgent) exactly when this count is non-zero, so every Space falls
-// back to the display-level configuration that zenith keeps updating.
+// store is reset. The caller empties only the "Spaces" dictionary (plutil
+// -replace + killall WallpaperAgent) exactly when this count is non-zero, so
+// every Space falls back to the display-level configuration that zenith keeps
+// updating.
 //
 // Kept outside the darwin build tag so the parsing is testable from any
 // development platform.

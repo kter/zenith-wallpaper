@@ -11,13 +11,14 @@ import (
 
 func TestProjectionRoundTrip(t *testing.T) {
 	const cx, cy, radius = 500.0, 400.0, 700.0
+	disc := skyDisc{cx, cy, radius}
 	for alt := 1.0; alt <= 90; alt += 8.9 {
 		for az := 0.0; az < 360; az += 30 {
-			px, py, ok := horizToPixel(alt, az, cx, cy, radius)
+			px, py, ok := disc.horizToPixel(alt, az)
 			if !ok {
 				t.Fatalf("horizToPixel(%v, %v) unexpectedly failed", alt, az)
 			}
-			alt2, az2, ok := pixelToHoriz(px, py, cx, cy, radius)
+			alt2, az2, ok := disc.pixelToHoriz(px, py)
 			if !ok {
 				t.Fatalf("pixelToHoriz of projected (%v, %v) fell outside dome", alt, az)
 			}
@@ -35,35 +36,37 @@ func TestProjectionRoundTrip(t *testing.T) {
 
 func TestHorizToPixelConventions(t *testing.T) {
 	const cx, cy, radius = 500.0, 500.0, 700.0
+	disc := skyDisc{cx, cy, radius}
 
 	// Below the horizon is not projected.
-	if _, _, ok := horizToPixel(-0.1, 0, cx, cy, radius); ok {
+	if _, _, ok := disc.horizToPixel(-0.1, 0); ok {
 		t.Error("horizToPixel(alt<0) must return ok=false")
 	}
 
 	// The zenith maps to the center.
-	px, py, _ := horizToPixel(90, 123, cx, cy, radius)
+	px, py, _ := disc.horizToPixel(90, 123)
 	if math.Abs(px-cx) > 1e-9 || math.Abs(py-cy) > 1e-9 {
 		t.Errorf("zenith at (%v, %v), want center (%v, %v)", px, py, cx, cy)
 	}
 
 	// Looking-up view: North=up (smaller y), East=left (smaller x).
-	px, py, _ = horizToPixel(45, 0, cx, cy, radius)
+	px, py, _ = disc.horizToPixel(45, 0)
 	if !(py < cy) || math.Abs(px-cx) > 1e-9 {
 		t.Errorf("north at (%v, %v), want directly above center", px, py)
 	}
-	px, py, _ = horizToPixel(45, 90, cx, cy, radius)
+	px, py, _ = disc.horizToPixel(45, 90)
 	if !(px < cx) || math.Abs(py-cy) > 1e-9 {
 		t.Errorf("east at (%v, %v), want directly left of center", px, py)
 	}
 }
 
 func TestPixelToHorizOutsideDome(t *testing.T) {
-	if _, _, ok := pixelToHoriz(0, 0, 500, 500, 100); ok {
+	disc := skyDisc{500, 500, 100}
+	if _, _, ok := disc.pixelToHoriz(0, 0); ok {
 		t.Error("pixel far outside the dome must return ok=false")
 	}
 	// The horizon ring itself is inside.
-	if _, _, ok := pixelToHoriz(500, 500-100, 500, 500, 100); !ok {
+	if _, _, ok := disc.pixelToHoriz(500, 500-100); !ok {
 		t.Error("pixel on the dome radius must return ok=true")
 	}
 }

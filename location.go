@@ -25,8 +25,7 @@ type Location struct {
 var defaultLocation = Location{Lat: 35.6852, Lon: 139.7528, TZ: "Asia/Tokyo"}
 
 func cacheFile() string {
-	base, _ := os.UserCacheDir()
-	return filepath.Join(base, "zenith-wallpaper", "location.json")
+	return filepath.Join(cacheDir(), "location.json")
 }
 
 func saveLocation(loc Location) {
@@ -94,14 +93,14 @@ func parseIPInfo(b []byte) (Location, bool) {
 	}
 	tz := r.Timezone
 	if tz == "" {
-		tz = inferTZ(lat, lon)
+		tz = inferTZ(lon)
 	}
 	return Location{Lat: lat, Lon: lon, TZ: tz}, true
 }
 
-// inferTZ is a coarse fallback when no timezone is returned.
-func inferTZ(lat, lon float64) string {
-	_ = lat
+// inferTZ is a coarse fallback when no timezone is returned: it derives a
+// fixed-offset Etc zone from longitude alone.
+func inferTZ(lon float64) string {
 	// math.Round, not int(x+0.5): truncation would round western (negative)
 	// longitudes toward zero and shift them one hour east.
 	offset := int(math.Round(lon / 15.0))
