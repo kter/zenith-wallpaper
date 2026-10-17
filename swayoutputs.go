@@ -7,12 +7,8 @@ import "encoding/json"
 // parsing of captured payloads is testable from any development platform.
 func parseSwayOutputs(raw []byte) ([]Output, error) {
 	var nodes []struct {
-		Name   string `json:"name"`
-		Active bool   `json:"active"`
-		Rect   struct {
-			Width  int `json:"width"`
-			Height int `json:"height"`
-		} `json:"rect"`
+		Name        string `json:"name"`
+		Active      bool   `json:"active"`
 		CurrentMode struct {
 			Width  int `json:"width"`
 			Height int `json:"height"`

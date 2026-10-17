@@ -18,11 +18,13 @@ import (
 //
 // Kept outside the darwin build tag so the parsing is testable from any
 // development platform.
+// rootDictDepth is the nesting depth of the root dict: <plist><dict>.
+const rootDictDepth = 2
+
 func spacesOverrideCount(plistXML []byte) (int, error) {
 	dec := xml.NewDecoder(bytes.NewReader(plistXML))
-	depth := 0        // element nesting depth
+	depth := 0 // element nesting depth
 	inRootDict := false
-	rootDictDepth := 0
 	var pendingKey string // last <key> text read at root-dict level
 	keyText := false      // currently inside a root-level <key> element
 
@@ -34,10 +36,9 @@ func spacesOverrideCount(plistXML []byte) (int, error) {
 		switch t := tok.(type) {
 		case xml.StartElement:
 			depth++
-			if !inRootDict && t.Name.Local == "dict" && depth == 2 {
+			if !inRootDict && t.Name.Local == "dict" && depth == rootDictDepth {
 				// The first <dict> directly under <plist> is the root dict.
 				inRootDict = true
-				rootDictDepth = depth
 				continue
 			}
 			if inRootDict && depth == rootDictDepth+1 {

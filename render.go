@@ -51,9 +51,9 @@ func (d skyDisc) horizToPixel(altDeg, azDeg float64) (float64, float64, bool) {
 	if altDeg < 0 {
 		return 0, 0, false
 	}
-	zenith := (90.0 - altDeg) * math.Pi / 180.0
+	zenith := deg2rad(90.0 - altDeg)
 	rProj := d.radius * math.Sqrt(2) * math.Sin(zenith/2)
-	azRad := azDeg * math.Pi / 180.0
+	azRad := deg2rad(azDeg)
 	px := d.cx - rProj*math.Sin(azRad) // East → left
 	py := d.cy - rProj*math.Cos(azRad) // North → up
 	return px, py, true
@@ -72,9 +72,8 @@ func (d skyDisc) pixelToHoriz(px, py float64) (alt, az float64, ok bool) {
 		sinHalf = 1
 	}
 	zenithRad := 2 * math.Asin(sinHalf)
-	alt = 90.0 - zenithRad*180/math.Pi
-	az = math.Atan2(dx, dy) * 180 / math.Pi
-	az = mod360(az)
+	alt = 90.0 - rad2deg(zenithRad)
+	az = mod360(rad2deg(math.Atan2(dx, dy)))
 	return alt, az, true
 }
 
@@ -95,9 +94,6 @@ func renderMilkyWay(img *image.RGBA, ot ObserverTime, mw *MilkyWay, disc skyDisc
 func renderStars(img *image.RGBA, ot ObserverTime, stars []Star, disc skyDisc) {
 	for _, s := range stars {
 		hc := ot.RADecToHoriz(s.RA, s.Dec)
-		if hc.Alt < 0 {
-			continue
-		}
 		px, py, ok := disc.horizToPixel(hc.Alt, hc.Az)
 		if !ok {
 			continue
@@ -129,7 +125,6 @@ func renderPlanets(img *image.RGBA, planets []Planet, disc skyDisc) {
 	}
 }
 
-
 func fillCircle(img *image.RGBA, cx, cy, r int, c color.RGBA) {
 	for dy := -r; dy <= r; dy++ {
 		for dx := -r; dx <= r; dx++ {
@@ -147,16 +142,9 @@ func setPixelBlend(img *image.RGBA, x, y int, c color.RGBA) {
 	}
 	e := img.RGBAAt(x, y)
 	img.SetRGBA(x, y, color.RGBA{
-		R: maxU8(e.R, c.R),
-		G: maxU8(e.G, c.G),
-		B: maxU8(e.B, c.B),
-		A: maxU8(e.A, c.A),
+		R: max(e.R, c.R),
+		G: max(e.G, c.G),
+		B: max(e.B, c.B),
+		A: max(e.A, c.A),
 	})
-}
-
-func maxU8(a, b uint8) uint8 {
-	if a > b {
-		return a
-	}
-	return b
 }

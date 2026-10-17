@@ -19,12 +19,10 @@ type HorizCoord struct {
 
 // ObserverTime bundles location and JDE/GST for coordinate transforms.
 type ObserverTime struct {
-	Loc  Location
-	T    time.Time
 	jde  float64
-	gst  unit.Time  // Greenwich Apparent Sidereal Time
-	phi  unit.Angle // observer latitude (radians)
-	psi  unit.Angle // observer longitude (radians)
+	gst  unit.Time          // Greenwich Apparent Sidereal Time
+	phi  unit.Angle         // observer latitude (radians)
+	psi  unit.Angle         // observer longitude (radians)
 	prec *precess.Precessor // J2000 → B1950
 }
 
@@ -33,11 +31,9 @@ func NewObserverTime(loc Location, t time.Time) ObserverTime {
 	gst := sidereal.Apparent(jde)
 	p := precess.NewPrecessor(2000.0, 1950.0)
 	return ObserverTime{
-		Loc:  loc,
-		T:    t,
-		jde:  jde,
-		gst:  gst,
-		phi:  unit.AngleFromDeg(loc.Lat),
+		jde: jde,
+		gst: gst,
+		phi: unit.AngleFromDeg(loc.Lat),
 		// meeus follows the book's convention of longitude positive WEST of
 		// Greenwich (H = θ0 - ψ - α), so the geographic east-positive
 		// longitude must be negated here.
@@ -86,10 +82,7 @@ func PlanetPositions(ot ObserverTime) []Planet {
 	d := ot.jde - 2451545.0 // days from J2000.0
 	var results []Planet
 
-	bodies := []struct{ name string; ra, dec float64 }{moonRADec(d)}
-	for _, p := range planetRADecs(d) {
-		bodies = append(bodies, p)
-	}
+	bodies := append([]namedRADec{moonRADec(d)}, planetRADecs(d)...)
 
 	for _, b := range bodies {
 		hc := ot.RADecToHoriz(b.ra, b.dec)
@@ -100,7 +93,10 @@ func PlanetPositions(ot ObserverTime) []Planet {
 	return results
 }
 
-type namedRADec struct{ name string; ra, dec float64 }
+type namedRADec struct {
+	name    string
+	ra, dec float64
+}
 
 // moonRADec returns Moon RA/Dec (degrees) via Schlyter low-precision method.
 func moonRADec(d float64) namedRADec {
@@ -111,28 +107,16 @@ func moonRADec(d float64) namedRADec {
 	e := 0.054900
 	M := mod360(115.3654 + 13.0649929509*d)
 
-	E := solveKepler(M, e)
-	xv := a * (math.Cos(deg2rad(E)) - e)
-	yv := a * math.Sqrt(1-e*e) * math.Sin(deg2rad(E))
-	v := math.Atan2(yv, xv)
-	r := math.Sqrt(xv*xv + yv*yv)
-
-	lonEcl := v + deg2rad(w)
-	Nrad, irad := deg2rad(N), deg2rad(iDeg)
-
-	xecl := r * (math.Cos(Nrad)*math.Cos(lonEcl) - math.Sin(Nrad)*math.Sin(lonEcl)*math.Cos(irad))
-	yecl := r * (math.Sin(Nrad)*math.Cos(lonEcl) + math.Cos(Nrad)*math.Sin(lonEcl)*math.Cos(irad))
-	zecl := r * math.Sin(lonEcl) * math.Sin(irad)
-
+	xecl, yecl, zecl := orbitToEcliptic(N, iDeg, w, a, e, M)
 	return eclToEqRADec("Moon", d, xecl, yecl, zecl)
 }
 
 // planetRADecs returns approximate RA/Dec for 5 planets (degrees).
 func planetRADecs(d float64) []namedRADec {
 	type elem struct {
-		name                          string
-		N0, Nd, i0, w0, wd, M0, Md   float64
-		a, e0, ed                     float64
+		name                       string
+		N0, Nd, i0, w0, wd, M0, Md float64
+		a, e0, ed                  float64
 	}
 	planets := []elem{
 		{"Mercury", 48.3313, 3.24587e-5, 7.0047, 29.1241, 1.01444e-5, 0.387098, 0.205635, 5.59e-10, 168.6562, 4.0923344368},
@@ -155,18 +139,7 @@ func planetRADecs(d float64) []namedRADec {
 		e := p.e0 + p.ed*d
 		M := mod360(p.M0 + p.Md*d)
 
-		E := solveKepler(M, e)
-		xv := p.a * (math.Cos(deg2rad(E)) - e)
-		yv := p.a * math.Sqrt(1-e*e) * math.Sin(deg2rad(E))
-		v := math.Atan2(yv, xv)
-		r := math.Sqrt(xv*xv + yv*yv)
-
-		lonEcl := v + deg2rad(w)
-		Nrad, irad := deg2rad(N), deg2rad(p.i0)
-
-		xh := r * (math.Cos(Nrad)*math.Cos(lonEcl) - math.Sin(Nrad)*math.Sin(lonEcl)*math.Cos(irad))
-		yh := r * (math.Sin(Nrad)*math.Cos(lonEcl) + math.Cos(Nrad)*math.Sin(lonEcl)*math.Cos(irad))
-		zh := r * math.Sin(lonEcl) * math.Sin(irad)
+		xh, yh, zh := orbitToEcliptic(N, p.i0, w, p.a, e, M)
 
 		// Geocentric
 		xg, yg, zg := xh-xe, yh-ye, zh-0.0
@@ -174,6 +147,24 @@ func planetRADecs(d float64) []namedRADec {
 		results = append(results, eclToEqRADec(p.name, d, xg, yg, zg))
 	}
 	return results
+}
+
+// orbitToEcliptic solves the orbit for the given elements (angles in
+// degrees) and returns the body's ecliptic XYZ relative to the orbit's centre.
+func orbitToEcliptic(N, iDeg, w, a, e, M float64) (x, y, z float64) {
+	E := solveKepler(M, e)
+	xv := a * (math.Cos(deg2rad(E)) - e)
+	yv := a * math.Sqrt(1-e*e) * math.Sin(deg2rad(E))
+	v := math.Atan2(yv, xv)
+	r := math.Sqrt(xv*xv + yv*yv)
+
+	lonEcl := v + deg2rad(w)
+	Nrad, irad := deg2rad(N), deg2rad(iDeg)
+
+	x = r * (math.Cos(Nrad)*math.Cos(lonEcl) - math.Sin(Nrad)*math.Sin(lonEcl)*math.Cos(irad))
+	y = r * (math.Sin(Nrad)*math.Cos(lonEcl) + math.Cos(Nrad)*math.Sin(lonEcl)*math.Cos(irad))
+	z = r * math.Sin(lonEcl) * math.Sin(irad)
+	return x, y, z
 }
 
 // eclToEqRADec converts geocentric ecliptic XYZ to RA/Dec degrees.

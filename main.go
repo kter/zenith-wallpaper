@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -96,16 +97,9 @@ func cacheDir() string {
 	return filepath.Join(base, "zenith-wallpaper")
 }
 
+var unsafeFilenameChars = strings.NewReplacer("/", "_", "\\", "_", ":", "_", " ", "_")
+
 // filenameSafe replaces characters unsafe for filenames.
 func filenameSafe(s string) string {
-	out := make([]byte, len(s))
-	for i := 0; i < len(s); i++ {
-		c := s[i]
-		if c == '/' || c == '\\' || c == ':' || c == ' ' {
-			out[i] = '_'
-		} else {
-			out[i] = c
-		}
-	}
-	return string(out)
+	return unsafeFilenameChars.Replace(s)
 }
