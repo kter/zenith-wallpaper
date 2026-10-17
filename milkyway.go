@@ -19,6 +19,7 @@ var milkywayJPG []byte
 //   - y=0 → b=+90° (north galactic pole at top), y=H → b=-90°
 type MilkyWay struct {
 	img    image.Image
+	origin image.Point // img.Bounds().Min
 	width  int
 	height int
 }
@@ -30,7 +31,7 @@ func LoadMilkyWay() (*MilkyWay, error) {
 		return nil, err
 	}
 	b := img.Bounds()
-	return &MilkyWay{img: img, width: b.Dx(), height: b.Dy()}, nil
+	return &MilkyWay{img: img, origin: b.Min, width: b.Dx(), height: b.Dy()}, nil
 }
 
 // Sample returns the panorama color at galactic longitude l, latitude b (degrees).
@@ -39,13 +40,7 @@ func LoadMilkyWay() (*MilkyWay, error) {
 // center (x = W/2), with l increasing to the LEFT (standard astronomical map convention).
 // b=+90 at top, b=-90 at bottom.
 func (mw *MilkyWay) Sample(l, b float64) color.RGBA {
-	// Normalise l to [-180, 180)
-	for l >= 180 {
-		l -= 360
-	}
-	for l < -180 {
-		l += 360
-	}
+	l = mod360(l+180) - 180 // normalise to [-180, 180)
 
 	// x: l=0 → x=W/2; l increases to the LEFT, so fx = (180-l)/360 * W.
 	fx := (180.0 - l) / 360.0 * float64(mw.width)
@@ -58,9 +53,6 @@ func (mw *MilkyWay) Sample(l, b float64) color.RGBA {
 	x1 := (x0 + 1) % mw.width
 	y1 := y0 + 1
 
-	if x0 < 0 {
-		x0 += mw.width
-	}
 	if y0 < 0 {
 		y0 = 0
 	}
@@ -71,10 +63,11 @@ func (mw *MilkyWay) Sample(l, b float64) color.RGBA {
 	tx := fx - math.Floor(fx)
 	ty := fy - math.Floor(fy)
 
-	c00 := colorToFloats(mw.img.At(x0+mw.img.Bounds().Min.X, y0+mw.img.Bounds().Min.Y))
-	c10 := colorToFloats(mw.img.At(x1+mw.img.Bounds().Min.X, y0+mw.img.Bounds().Min.Y))
-	c01 := colorToFloats(mw.img.At(x0+mw.img.Bounds().Min.X, y1+mw.img.Bounds().Min.Y))
-	c11 := colorToFloats(mw.img.At(x1+mw.img.Bounds().Min.X, y1+mw.img.Bounds().Min.Y))
+	ox, oy := mw.origin.X, mw.origin.Y
+	c00 := colorToFloats(mw.img.At(x0+ox, y0+oy))
+	c10 := colorToFloats(mw.img.At(x1+ox, y0+oy))
+	c01 := colorToFloats(mw.img.At(x0+ox, y1+oy))
+	c11 := colorToFloats(mw.img.At(x1+ox, y1+oy))
 
 	r := bilerp(c00[0], c10[0], c01[0], c11[0], tx, ty)
 	g := bilerp(c00[1], c10[1], c01[1], c11[1], tx, ty)
@@ -83,9 +76,9 @@ func (mw *MilkyWay) Sample(l, b float64) color.RGBA {
 	// Round rather than truncate: bilerp of equal inputs must reproduce the
 	// input byte exactly despite floating-point error.
 	return color.RGBA{
-		R: uint8(clamp01(r)*255 + 0.5),
-		G: uint8(clamp01(g)*255 + 0.5),
-		B: uint8(clamp01(b2)*255 + 0.5),
+		R: uint8(min(max(r, 0), 1)*255 + 0.5),
+		G: uint8(min(max(g, 0), 1)*255 + 0.5),
+		B: uint8(min(max(b2, 0), 1)*255 + 0.5),
 		A: 255,
 	}
 }
@@ -97,14 +90,4 @@ func colorToFloats(c color.Color) [3]float64 {
 
 func bilerp(c00, c10, c01, c11, tx, ty float64) float64 {
 	return c00*(1-tx)*(1-ty) + c10*tx*(1-ty) + c01*(1-tx)*ty + c11*tx*ty
-}
-
-func clamp01(v float64) float64 {
-	if v < 0 {
-		return 0
-	}
-	if v > 1 {
-		return 1
-	}
-	return v
 }

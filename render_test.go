@@ -119,7 +119,7 @@ func TestRenderSky(t *testing.T) {
 	ot := NewObserverTime(tokyo, time.Date(2026, 7, 2, 0, 0, 0, 0, time.UTC))
 	mw := testMilkyWay(color.RGBA{40, 40, 60, 255})
 	stars := []Star{
-		{RA: 37.954, Dec: 89.264, Mag: 1.97},  // Polaris: always up from Tokyo
+		{RA: 37.954, Dec: 89.264, Mag: 1.97},    // Polaris: always up from Tokyo
 		{RA: 101.287, Dec: -16.716, Mag: -1.46}, // Sirius: sometimes below horizon
 	}
 	planets := []Planet{{Name: "Moon", HorizCoord: HorizCoord{Alt: 45, Az: 180}}}

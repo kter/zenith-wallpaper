@@ -4,17 +4,22 @@ UNITDIR  := $(HOME)/.config/systemd/user
 
 MISE     := $(shell command -v mise 2>/dev/null || echo mise)
 GO       := $(MISE) exec go -- go
+GOFMT    := $(MISE) exec go -- gofmt
 
-.PHONY: all build test install install-units uninstall clean release
+.PHONY: all build fmt test install install-units uninstall clean release
 
 all: build
 
 build:
 	$(GO) build -o $(BINARY) .
 
-# Runs vet + tests, then verifies the darwin build still compiles
+fmt:
+	$(GOFMT) -w *.go
+
+# Checks gofmt, runs vet + tests, then verifies the darwin build still compiles
 # (platform-specific files are build-tagged; see AGENTS.md).
 test:
+	@out=$$($(GOFMT) -l *.go); test -z "$$out" || { echo "gofmt needed (run make fmt):"; echo "$$out"; exit 1; }
 	$(GO) vet ./...
 	$(GO) test ./...
 	GOOS=darwin GOARCH=arm64 $(GO) build -o /dev/null .

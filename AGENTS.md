@@ -34,5 +34,5 @@ make release VERSION=X.Y
 プラットフォームからでもテストできるようにしている。exec を伴う部分だけを
 タグ付きファイルに残すこと。
 
-変更時は `make test` を実行すること (vet + 全テスト + darwin クロスコンパイル
-確認を含む)。CI (test.yml) でも同じチェックが走る。
+変更時は `make test` を実行すること (gofmt チェック + vet + 全テスト + darwin
+クロスコンパイル確認を含む。整形は `make fmt`)。CI (test.yml) でも同じチェックが走る。

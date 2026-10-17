@@ -11,8 +11,8 @@ func TestInferTZ(t *testing.T) {
 		want string
 	}{
 		{0, "UTC"},
-		{7.2, "UTC"},          // rounds to offset 0
-		{-7.2, "UTC"},         // rounds to offset 0 from the west as well
+		{7.2, "UTC"},            // rounds to offset 0
+		{-7.2, "UTC"},           // rounds to offset 0 from the west as well
 		{139.6917, "Etc/GMT-9"}, // Tokyo; Etc zones use POSIX inverted signs
 		{-74.0060, "Etc/GMT+5"}, // New York; truncation would give +4
 		{151.2093, "Etc/GMT-10"},

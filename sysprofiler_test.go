@@ -4,9 +4,9 @@ import "testing"
 
 func TestParseDimensions(t *testing.T) {
 	tests := []struct {
-		in     string
-		w, h   int
-		ok     bool
+		in   string
+		w, h int
+		ok   bool
 	}{
 		{"3840 x 2160", 3840, 2160, true},
 		{"2160 x 3840", 2160, 3840, true},
