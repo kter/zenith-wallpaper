@@ -13,6 +13,14 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
+      - name: Gofmt
+        run: |
+          out=$(gofmt -l *.go)
+          if [ -n "$out" ]; then
+            echo "::error::gofmt needed (run make fmt):"
+            echo "$out"
+            exit 1
+          fi
       - name: Vet
         run: go vet ./...
       - name: Test
