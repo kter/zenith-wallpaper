@@ -2,11 +2,17 @@ BINARY   := zenith-wallpaper
 DESTBIN  := $(HOME)/.local/bin/$(BINARY)
 UNITDIR  := $(HOME)/.config/systemd/user
 
-MISE     := $(shell command -v mise 2>/dev/null || echo mise)
+# Use mise when it is installed; otherwise the go on PATH (cloud agents, CI).
+MISE     := $(shell command -v mise 2>/dev/null)
+ifneq ($(MISE),)
 GO       := $(MISE) exec go -- go
 GOFMT    := $(MISE) exec go -- gofmt
+else
+GO       := go
+GOFMT    := gofmt
+endif
 
-.PHONY: all build fmt test install install-units uninstall clean release
+.PHONY: all build fmt test check install install-units uninstall clean release
 
 all: build
 
@@ -18,12 +24,16 @@ fmt:
 
 # Checks gofmt, runs vet + tests, then verifies the darwin build still compiles
 # (platform-specific files are build-tagged; see AGENTS.md).
+# `|| exit 1` keeps a missing or failing gofmt from passing as "no diffs".
 test:
-	@out=$$($(GOFMT) -l *.go); test -z "$$out" || { echo "gofmt needed (run make fmt):"; echo "$$out"; exit 1; }
+	@out=$$($(GOFMT) -l *.go) || exit 1; test -z "$$out" || { echo "gofmt needed (run make fmt):"; echo "$$out"; exit 1; }
 	$(GO) vet ./...
 	$(GO) test ./...
 	GOOS=darwin GOARCH=arm64 $(GO) build -o /dev/null .
 	GOOS=darwin GOARCH=arm64 $(GO) vet .
+
+# Same checks as test (and CI); the entry point AGENTS.md names for agents.
+check: test
 
 install: build
 	install -m 0755 $(BINARY) $(DESTBIN)
