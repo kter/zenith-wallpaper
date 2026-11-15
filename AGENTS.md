@@ -12,7 +12,7 @@ gh api -X POST repos/kter/zenith-wallpaper/actions/workflows/release.yml/dispatc
   -f ref=main -f 'inputs[version]=X.Y'
 ```
 
-ワークフローは `release` 環境で 621 の承認を待つ。承認されると、main の Test が通っていることと
+ワークフローは `release` 環境でオーナーの承認を待つ。承認されると、main の Test が通っていることと
 タグが未使用であることを確かめてから `vX.Y` タグを作り、2系統が並走する:
 
 1. **dnf (Fedora)**: `kter/linux-pkg` の CI が RPM をビルド・GPG 署名・
@@ -48,7 +48,7 @@ Claude Code on the web と Codex Cloud で作業するときの約束。
   `make install`・`make install-units`（手元の systemd を触る）。
 - **リリースするとき:** 変更を PR で main に入れ、main の Test が通ったあとで、上の「リリース手順」の
   REST 呼び出しで Release ワークフローを起動する。バージョンは `git tag --list 'v*' --sort=-v:refname | head -1` の次を選ぶ。
-  起動したら 621 の承認待ちになるので、PR か Issue に「承認待ち」と run の URL を書いて人に戻す。
+  起動したらオーナーの承認待ちになるので、PR か Issue に「承認待ち」と run の URL を書いて人に戻す。
   `.claude/skills/zenith-release` は手元向け（main へ直接 commit・push する）なので、クラウドではこの手順を使う。
 - **準備:** `bash scripts/agent/setup.sh` が go.mod の Go を用意する。依存は `vendor/` にあるので、ほかに入れるものは無い。
   Claude Code on the web では `.claude/settings.json` の SessionStart フックが自動で実行する。
