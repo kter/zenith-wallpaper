@@ -64,6 +64,7 @@ Claude Code on the web と Codex Cloud で作業するときの約束。
 
 | 項目 | Claude Code on the web | Codex Cloud |
 | --- | --- | --- |
-| Go | 1.25.0 が `/usr/local/go` に入っている。setup.sh はそれを使う（2026-11-15、PR #6） | 未計測 |
-| proxy.golang.org・go.dev への到達 | どちらも 200 | 未計測 |
-| `make check` | 終了コード 0（約34秒）。SessionStart フックが setup.sh を自動で実行した | 未計測 |
+| Go | 1.25.0 が `/usr/local/go` に入っている。setup.sh はそれを使う（2026-11-15、PR #6） | `/usr/bin/go` は Go ではない別のコマンド。環境の install script が Go 1.25.14 を入れ、`. /workspace/.tools/zenith/activate.sh` で PATH に載る。setup.sh は偽の go を無視して go.dev から取る |
+| proxy.golang.org・go.dev への到達 | どちらも 200 | どちらも 200 |
+| `make check` | 終了コード 0（約34秒）。SessionStart フックが setup.sh を自動で実行した | activate.sh を読んでから実行する |
+| GitHub への書き込み（リリースの起動） | `gh` は kter のユーザートークンで、REST の dispatch を呼べる。一部の API（environments など）はセッションのプロキシが 403 で止める | `gh` の REST は Forbidden。GitHub コネクターは読み取りのみで dispatch の手段が無い。**Codex からはリリースを起動できない**ので、PR に「リリースが必要」と書いて人に戻す |

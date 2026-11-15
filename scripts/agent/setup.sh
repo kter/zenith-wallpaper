@@ -26,7 +26,9 @@ if command -v mise >/dev/null 2>&1; then
   exit 0
 fi
 
-if command -v go >/dev/null 2>&1; then
+# Codex Cloud ships an unrelated /usr/bin/go ("Unknown option: version"), so
+# only trust a go whose `go version` looks like the Go toolchain.
+if command -v go >/dev/null 2>&1 && go version 2>/dev/null | grep -q '^go version go'; then
   log "using $(command -v go) ($(go version))"
   # Older toolchains download go$want themselves because go.mod requires it.
   GOTOOLCHAIN=auto go version
