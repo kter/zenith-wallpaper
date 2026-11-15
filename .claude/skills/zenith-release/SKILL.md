@@ -13,7 +13,7 @@ description: >-
 
 zenith-wallpaper への変更を `repo.devtools.site` の dnf リポジトリと
 `kter/homebrew-tap`(brew)へ確実に届ける。
-タグ push は公開ビルドを起動する不可逆操作なので、各ステップでユーザーの確認を
+リリースの起動（`make release`）は公開ビルドにつながる操作なので、各ステップでユーザーの確認を
 取りながら進む。
 
 ## Step 1 — リポジトリの状態を把握する
@@ -79,13 +79,11 @@ git tag -l 'v*' --sort=-version:refname | head -1
 make release VERSION=X.Y
 ```
 
-`make release` には以下のガードが組み込まれている:
-- 作業ツリーがクリーン
-- `main` ブランチにいる
-- `origin/main` と同期済み
-
-ガードが通過すれば `vX.Y` タグが push され、`release.yml` が起動する。
-失敗した場合はエラーメッセージを表示して停止する。
+`make release` は main の `release.yml` を `workflow_dispatch` で起動する（タグが既にあれば止まる）。
+ワークフローは `release` 環境でユーザーの承認を待ち、承認後に main の Test 成功とタグの未使用を確かめてから
+`vX.Y` タグを作る。承認はユーザーが GitHub の画面で行うので、run の URL を伝えて待つ。
+クラウド（`CLAUDE_CODE_REMOTE=true`）では Step 2 の main への直接 push はできないので、PR で main に入れてから
+AGENTS.md の REST 呼び出しで起動する。
 
 ## Step 5 — CI を監視して公開を確認する
 
@@ -137,7 +135,7 @@ CloudFront キャッシュが古い場合は `docs/operations.md` の invalidati
 
 ## ハードルール
 
-- タグ push (= `make release`) はユーザー確認後にのみ実行する。
+- `make release`（リリースの起動）はユーザー確認後にのみ実行する。
 - `main` 以外のブランチではリリースしない。
 - 資格情報(PAT・GPG キー等)を出力しない。
-- `make release` を使わずに `git tag` を直接実行しない。
+- `git tag` を直接実行しない（タグは Release ワークフローが作る）。
