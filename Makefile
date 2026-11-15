@@ -53,16 +53,14 @@ uninstall:
 clean:
 	rm -f $(BINARY)
 
-# Release: create vX.Y tag and push; release.yml then triggers the RPM build
-# in kter/linux-pkg and bumps the Homebrew formula in kter/homebrew-tap
+# Release: start the Release workflow (release.yml) on main. It waits for
+# approval on the `release` GitHub environment, then creates the vX.Y tag,
+# triggers the RPM build in kter/linux-pkg and bumps kter/homebrew-tap.
 release:
 ifndef VERSION
 	$(error VERSION is required, e.g. make release VERSION=1.1)
 endif
-	@git diff --quiet || { echo "ERROR: working tree is dirty"; exit 1; }
-	@test "$$(git rev-parse --abbrev-ref HEAD)" = "main" || { echo "ERROR: not on main branch"; exit 1; }
 	@git fetch -q origin
-	@test "$$(git rev-parse HEAD)" = "$$(git rev-parse origin/main)" || { echo "ERROR: main is not in sync with origin/main"; exit 1; }
-	git tag v$(VERSION)
-	git push origin v$(VERSION)
-	@echo "Released v$(VERSION) — RPM build (kter/linux-pkg) and Homebrew bump (kter/homebrew-tap) triggered"
+	@git rev-parse -q --verify "refs/tags/v$(VERSION)" >/dev/null && { echo "ERROR: tag v$(VERSION) already exists"; exit 1; } || true
+	gh api -X POST repos/kter/zenith-wallpaper/actions/workflows/release.yml/dispatches -f ref=main -f 'inputs[version]=$(VERSION)'
+	@echo "Release workflow started for v$(VERSION) on main — approve it in the 'release' environment: https://github.com/kter/zenith-wallpaper/actions/workflows/release.yml"

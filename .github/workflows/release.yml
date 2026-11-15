@@ -1,35 +1,93 @@
 name: Release (RPM build + Homebrew tap bump)
 
+# The only way to publish: workflow_dispatch with a version (`make release
+# VERSION=X.Y` locally, or the gh api call in AGENTS.md from a cloud agent).
+# The `tag` job waits for approval on the `release` environment, then creates
+# the v* tag itself. Pushing a tag by hand publishes nothing.
 on:
-  push:
-    tags:
-      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version without the v prefix, e.g. 1.2'
+        required: true
+        type: string
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
 
 jobs:
+  tag:
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: write
+      actions: read
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Check inputs and main
+        env:
+          VERSION: ${{ inputs.version }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "::error::Run this workflow on main (got $GITHUB_REF)"; exit 1
+          fi
+          if ! printf '%s' "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+(\.[0-9]+)?$'; then
+            echo "::error::version must look like 1.2 or 1.2.3 (got '$VERSION')"; exit 1
+          fi
+          if git rev-parse -q --verify "refs/tags/v$VERSION" >/dev/null; then
+            echo "::error::tag v$VERSION already exists"; exit 1
+          fi
+          # Same guard as `make release`: only release a main commit whose Test workflow passed.
+          ok=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/test.yml/runs?head_sha=$GITHUB_SHA&status=success" --jq '.total_count')
+          if [ "$ok" = "0" ]; then
+            echo "::error::no successful Test run for $GITHUB_SHA"; exit 1
+          fi
+      - name: Create tag
+        id: tag
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          git tag "v$VERSION" "$GITHUB_SHA"
+          git push origin "v$VERSION"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+
   dispatch:
+    needs: tag
     runs-on: ubuntu-latest
     steps:
       - name: Trigger linux-pkg RPM build
         env:
           TOKEN: ${{ secrets.LINUX_PKG_DISPATCH_TOKEN }}
+          TAG: ${{ needs.tag.outputs.tag }}
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"   # v1.1 -> 1.1
+          VERSION="${TAG#v}"   # v1.1 -> 1.1
           curl -fsSL -X POST \
             -H "Authorization: Bearer $TOKEN" \
             -H "Accept: application/vnd.github+json" \
             https://api.github.com/repos/kter/linux-pkg/dispatches \
-            -d "{\"event_type\":\"zenith-wallpaper-release\",\"client_payload\":{\"version\":\"$VERSION\",\"ref\":\"$GITHUB_REF_NAME\"}}"
-          echo "Dispatched version=$VERSION ref=$GITHUB_REF_NAME to kter/linux-pkg"
+            -d "{\"event_type\":\"zenith-wallpaper-release\",\"client_payload\":{\"version\":\"$VERSION\",\"ref\":\"$TAG\"}}"
+          echo "Dispatched version=$VERSION ref=$TAG to kter/linux-pkg"
 
   homebrew:
+    needs: tag
     runs-on: ubuntu-latest
     steps:
       - name: Bump formula in kter/homebrew-tap
         env:
           DEPLOY_KEY: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY }}
+          TAG: ${{ needs.tag.outputs.tag }}
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"   # v1.1 -> 1.1
-          URL="https://github.com/kter/zenith-wallpaper/archive/refs/tags/${GITHUB_REF_NAME}.tar.gz"
+          VERSION="${TAG#v}"   # v1.1 -> 1.1
+          URL="https://github.com/kter/zenith-wallpaper/archive/refs/tags/${TAG}.tar.gz"
           SHA=$(curl -fsSL "$URL" | sha256sum | awk '{print $1}')
           mkdir -p ~/.ssh
           echo "$DEPLOY_KEY" > ~/.ssh/id_ed25519
@@ -38,7 +96,7 @@ jobs:
           git clone git@github.com:kter/homebrew-tap.git
           cd homebrew-tap
           sed -i -E \
-            -e "s|archive/refs/tags/v[0-9.]+\.tar\.gz|archive/refs/tags/${GITHUB_REF_NAME}.tar.gz|" \
+            -e "s|archive/refs/tags/v[0-9.]+\.tar\.gz|archive/refs/tags/${TAG}.tar.gz|" \
             -e "s|^(  sha256 \")[0-9a-f]+(\".*)$|\1${SHA}\2|" \
             Formula/zenith-wallpaper.rb
           git -c user.name=github-actions -c user.email=actions@github.com \

@@ -2,22 +2,25 @@
 
 ## リリース手順
 
-main にマージしただけでは何も公開されない。公開にはバージョンタグを打つ必要が
-ある。**必ず以下のコマンドを使うこと:**
+main にマージしただけでは何も公開されない。公開は Release ワークフロー
+（release.yml、`workflow_dispatch`）だけが行う。**手元でもクラウドでも同じ入口を使う:**
 
 ```sh
 make release VERSION=X.Y
+# make や gh の GraphQL が使えない環境では、同じ REST 呼び出しを直接実行する
+gh api -X POST repos/kter/zenith-wallpaper/actions/workflows/release.yml/dispatches \
+  -f ref=main -f 'inputs[version]=X.Y'
 ```
 
-これが `vX.Y` タグを push し、release.yml から2系統が並走する:
+ワークフローは `release` 環境で 621 の承認を待つ。承認されると、main の Test が通っていることと
+タグが未使用であることを確かめてから `vX.Y` タグを作り、2系統が並走する:
 
 1. **dnf (Fedora)**: `kter/linux-pkg` の CI が RPM をビルド・GPG 署名・
    S3 公開 (`repo.devtools.site`)
 2. **Homebrew (macOS)**: `homebrew` job が `kter/homebrew-tap` の formula を
    新バージョン・新 sha256 に自動 bump (secret `HOMEBREW_TAP_DEPLOY_KEY` が必要)
 
-手動で `git tag` せず、常に `make release` を使う
-(clean / main / origin 同期のガードが誤リリースを防ぐ)。
+タグを手で push しても何も公開されない。既存の `v*` タグの移動・削除はルールセットで管理者だけに限っている。
 
 ## プラットフォーム構成
 
@@ -41,16 +44,18 @@ make release VERSION=X.Y
 
 Claude Code on the web と Codex Cloud で作業するときの約束。
 
-- **やらないこと:** リリース。`make release`・`git tag`・タグの push をしない。上の「リリース手順」は
-  人が手元で実行するもので、クラウドのエージェントは使わない（`.claude/skills/zenith-release` も同じ）。
-  `v*` タグはルールセットで管理者だけが作れる。main へ直接 push しない（ブランチ保護で拒否される）。
-  `make install`・`make install-units` もしない（手元の systemd を触る）。
+- **やらないこと:** `git tag`・タグの push、main への直接 push（ブランチ保護で拒否される）、
+  `make install`・`make install-units`（手元の systemd を触る）。
+- **リリースするとき:** 変更を PR で main に入れ、main の Test が通ったあとで、上の「リリース手順」の
+  REST 呼び出しで Release ワークフローを起動する。バージョンは `git tag --list 'v*' --sort=-v:refname | head -1` の次を選ぶ。
+  起動したら 621 の承認待ちになるので、PR か Issue に「承認待ち」と run の URL を書いて人に戻す。
+  `.claude/skills/zenith-release` は手元向け（main へ直接 commit・push する）なので、クラウドではこの手順を使う。
 - **準備:** `bash scripts/agent/setup.sh` が go.mod の Go を用意する。依存は `vendor/` にあるので、ほかに入れるものは無い。
   Claude Code on the web では `.claude/settings.json` の SessionStart フックが自動で実行する。
   Codex Cloud では環境のセットアップスクリプトに同じコマンドを書く。
 - **完了条件:** `make check`（`make test` と同じ。CI の test.yml と同じ確認）が終了コード 0 で、
   PR の説明に実行したコマンドと結果を書いていること。
-- **人に戻すこと:** 実機での確認（sway の壁紙設定、macOS の osascript、GeoClue の位置取得）とリリース。
+- **人に戻すこと:** 実機での確認（sway の壁紙設定、macOS の osascript、GeoClue の位置取得）とリリースの承認。
   PR の説明に「未確認」として書く。macOS の実機確認は人が手で行う。
 - **ホストに依存しないテストにする:** swaymsg・system_profiler・D-Bus・ipinfo.io を呼ぶのはタグ付きファイルだけで、
   テストはパーサーなどの純粋ロジックを対象にする。クラウドのコンテナにはどれも無い。
@@ -59,6 +64,6 @@ Claude Code on the web と Codex Cloud で作業するときの約束。
 
 | 項目 | Claude Code on the web | Codex Cloud |
 | --- | --- | --- |
-| Go | 未計測 | 未計測 |
-| proxy.golang.org・go.dev への到達 | 未計測 | 未計測 |
-| `make check` | 未計測 | 未計測 |
+| Go | 1.25.0 が `/usr/local/go` に入っている。setup.sh はそれを使う（2026-11-15、PR #6） | 未計測 |
+| proxy.golang.org・go.dev への到達 | どちらも 200 | 未計測 |
+| `make check` | 終了コード 0（約34秒）。SessionStart フックが setup.sh を自動で実行した | 未計測 |
